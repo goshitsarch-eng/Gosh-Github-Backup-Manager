@@ -1,0 +1,13 @@
+[Desktop Entry]
+Name=Gosh Github Backup Manager
+GenericName=GitHub Backup Tool
+Comment=A cross-platform app to backup your GitHub repositories
+Exec=gosh-github-backup-manager %u
+Icon=com.goshitsarch-eng.gosh-github-backup-manager
+Terminal=false
+Type=Application
+Categories=Development;Utility;
+Keywords=github;git;backup;repository;clone;
+StartupNotify=true
+StartupWMClass=gosh-github-backup-manager
+MimeType=x-scheme-handler/gosh-github-backup;

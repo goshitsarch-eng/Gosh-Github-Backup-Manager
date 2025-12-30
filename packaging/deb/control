@@ -1,0 +1,42 @@
+Source: gosh-github-backup-manager
+Section: devel
+Priority: optional
+Maintainer: Gosh-Its-Arch <gosh@example.com>
+Build-Depends: debhelper (>= 12),
+               nodejs (>= 18),
+               npm,
+               rustc (>= 1.70),
+               cargo,
+               libwebkit2gtk-4.1-dev,
+               libgtk-3-dev,
+               libssl-dev,
+               libayatana-appindicator3-dev,
+               librsvg2-dev,
+               curl,
+               wget,
+               file
+Standards-Version: 4.6.0
+Homepage: https://github.com/Gosh-Its-Arch/Github-Backup-Manager
+
+Package: gosh-github-backup-manager
+Architecture: amd64
+Depends: ${shlibs:Depends},
+         ${misc:Depends},
+         git,
+         libwebkit2gtk-4.1-0,
+         libgtk-3-0,
+         libssl3
+Description: A cross-platform app to backup your GitHub repositories
+ Gosh Github Backup Manager is a modern desktop application that helps you
+ backup your GitHub repositories to your local machine. It provides an
+ intuitive interface for managing your repository backups with support for
+ multiple backup modes.
+ .
+ Features:
+  - GitHub authentication via Personal Access Token
+  - Browse and filter your repositories
+  - Multiple backup modes: clone and mirror
+  - Optional ZIP archive creation with configurable compression
+  - Backup progress tracking
+  - Backup history management
+  - Light and dark theme support

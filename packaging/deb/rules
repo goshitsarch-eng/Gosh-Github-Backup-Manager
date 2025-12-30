@@ -1,0 +1,32 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	npm ci
+	npm run build
+
+override_dh_auto_install:
+	# Install binary
+	install -Dm755 src-tauri/target/release/gosh-github-backup-manager \
+		debian/gosh-github-backup-manager/usr/bin/gosh-github-backup-manager
+
+	# Install desktop file
+	install -Dm644 packaging/com.goshitsarch-eng.gosh-github-backup-manager.desktop \
+		debian/gosh-github-backup-manager/usr/share/applications/com.goshitsarch-eng.gosh-github-backup-manager.desktop
+
+	# Install metainfo
+	install -Dm644 packaging/com.goshitsarch-eng.gosh-github-backup-manager.metainfo.xml \
+		debian/gosh-github-backup-manager/usr/share/metainfo/com.goshitsarch-eng.gosh-github-backup-manager.metainfo.xml
+
+	# Install icons
+	install -Dm644 src-tauri/icons/32x32.png \
+		debian/gosh-github-backup-manager/usr/share/icons/hicolor/32x32/apps/com.goshitsarch-eng.gosh-github-backup-manager.png
+	install -Dm644 src-tauri/icons/128x128.png \
+		debian/gosh-github-backup-manager/usr/share/icons/hicolor/128x128/apps/com.goshitsarch-eng.gosh-github-backup-manager.png
+	install -Dm644 src-tauri/icons/128x128@2x.png \
+		debian/gosh-github-backup-manager/usr/share/icons/hicolor/256x256/apps/com.goshitsarch-eng.gosh-github-backup-manager.png
+
+override_dh_shlibdeps:
+	dh_shlibdeps --dpkg-shlibdeps-params=--ignore-missing-info

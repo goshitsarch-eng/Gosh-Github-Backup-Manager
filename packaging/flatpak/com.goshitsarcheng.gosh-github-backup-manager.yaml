@@ -1,0 +1,78 @@
+id: com.goshitsarcheng.gosh-github-backup-manager
+runtime: org.gnome.Platform
+runtime-version: '47'
+sdk: org.gnome.Sdk
+command: gosh-github-backup-manager
+
+finish-args:
+  # Display
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  - --share=ipc
+
+  # Network access for GitHub API
+  - --share=network
+
+  # File system access for backup storage
+  - --filesystem=home
+  - --filesystem=xdg-documents
+
+  # System tray support
+  - --talk-name=org.kde.StatusNotifierWatcher
+  - --talk-name=org.freedesktop.Notifications
+
+  # Git operations
+  - --talk-name=org.freedesktop.secrets
+
+modules:
+  # Git module for repository operations
+  - name: git
+    buildsystem: autotools
+    config-opts:
+      - --without-tcltk
+    make-args:
+      - NO_PERL=1
+      - INSTALL_SYMLINKS=1
+    sources:
+      - type: archive
+        url: https://mirrors.edge.kernel.org/pub/software/scm/git/git-2.47.1.tar.xz
+        sha256: f3d8f9bb23ae392374e91cd9d395970dabc5b9c5ee72f39884613cd84a6ed310
+
+  # Main application module
+  - name: gosh-github-backup-manager
+    buildsystem: simple
+    build-commands:
+      # Extract the deb package
+      - ar x gosh-github-backup-manager.deb
+      - tar xf data.tar.gz
+
+      # Install binary
+      - install -Dm755 usr/bin/gosh-github-backup-manager -t /app/bin/
+
+      # Install libraries if present
+      - if [ -d usr/lib ]; then cp -r usr/lib/* /app/lib/ 2>/dev/null || true; fi
+
+      # Install desktop file
+      - install -Dm644 com.goshitsarcheng.gosh-github-backup-manager.desktop /app/share/applications/com.goshitsarcheng.gosh-github-backup-manager.desktop
+
+      # Install metainfo
+      - install -Dm644 com.goshitsarcheng.gosh-github-backup-manager.metainfo.xml /app/share/metainfo/com.goshitsarcheng.gosh-github-backup-manager.metainfo.xml
+
+      # Install icons (max 512x512 for Flatpak)
+      - install -Dm644 usr/share/icons/hicolor/128x128/apps/gosh-github-backup-manager.png /app/share/icons/hicolor/128x128/apps/com.goshitsarcheng.gosh-github-backup-manager.png
+      - install -Dm644 usr/share/icons/hicolor/256x256@2/apps/gosh-github-backup-manager.png /app/share/icons/hicolor/256x256/apps/com.goshitsarcheng.gosh-github-backup-manager.png
+
+    sources:
+      # Local deb package
+      - type: file
+        path: ../gosh-github-backup-manager_1.0.0_amd64.deb
+        dest-filename: gosh-github-backup-manager.deb
+
+      # Desktop file
+      - type: file
+        path: com.goshitsarcheng.gosh-github-backup-manager.desktop
+
+      # MetaInfo file
+      - type: file
+        path: com.goshitsarcheng.gosh-github-backup-manager.metainfo.xml

@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.goshitsarch-eng.gosh-github-backup-manager</id>
+  <name>Gosh Github Backup Manager</name>
+  <summary>A cross-platform app to backup your GitHub repositories</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>AGPL-3.0</project_license>
+  <developer id="com.goshitsarch-eng">
+    <name>Gosh-Its-Arch</name>
+  </developer>
+  <description>
+    <p>
+      Gosh Github Backup Manager is a modern desktop application that helps you backup
+      your GitHub repositories to your local machine. It provides an intuitive interface
+      for managing your repository backups with support for multiple backup modes.
+    </p>
+    <p>Features:</p>
+    <ul>
+      <li>GitHub authentication via Personal Access Token</li>
+      <li>Browse and filter your repositories</li>
+      <li>Multiple backup modes: clone and mirror</li>
+      <li>Optional ZIP archive creation with configurable compression</li>
+      <li>Backup progress tracking</li>
+      <li>Backup history management</li>
+      <li>Light and dark theme support</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">com.goshitsarch-eng.gosh-github-backup-manager.desktop</launchable>
+  <url type="homepage">https://github.com/Gosh-Its-Arch/Github-Backup-Manager</url>
+  <url type="bugtracker">https://github.com/Gosh-Its-Arch/Github-Backup-Manager/issues</url>
+  <url type="vcs-browser">https://github.com/Gosh-Its-Arch/Github-Backup-Manager</url>
+  <categories>
+    <category>Development</category>
+    <category>Utility</category>
+  </categories>
+  <keywords>
+    <keyword>github</keyword>
+    <keyword>git</keyword>
+    <keyword>backup</keyword>
+    <keyword>repository</keyword>
+    <keyword>clone</keyword>
+  </keywords>
+  <screenshots>
+    <screenshot type="default">
+      <caption>Main application window</caption>
+      <image>https://raw.githubusercontent.com/Gosh-Its-Arch/Github-Backup-Manager/main/screenshots/main.png</image>
+    </screenshot>
+  </screenshots>
+  <content_rating type="oars-1.1" />
+  <releases>
+    <release version="1.0.0" date="2025-01-01">
+      <description>
+        <p>Initial release with core features:</p>
+        <ul>
+          <li>GitHub authentication</li>
+          <li>Repository browsing and filtering</li>
+          <li>Backup with clone and mirror modes</li>
+          <li>ZIP archive creation</li>
+          <li>Theme support</li>
+        </ul>
+      </description>
+    </release>
+  </releases>
+  <provides>
+    <binary>gosh-github-backup-manager</binary>
+  </provides>
+  <requires>
+    <display_length compare="ge">900</display_length>
+  </requires>
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+  </supports>
+</component>
