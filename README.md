@@ -2,7 +2,7 @@
 
 > Gosh apps are built with a Linux-first mindset: simplicity, transparency, and user control.
 >
-> We also provide Windows and macOS builds — not as a compromise, but as an on-ramp. Many people are curious about Linux but still live on other platforms day-to-day. If these tools help someone get comfortable and eventually make the jump, we're happy to meet them where they are.
+> We also provide Windows and macOS builds not as a compromise, but as an on-ramp. Many people are curious about Linux but still live on other platforms day-to-day. If these tools help someone get comfortable and eventually make the jump, we're happy to meet them where they are.
 
 A cross-platform Tauri desktop application to backup your GitHub repositories. Connect your GitHub account, view your repositories, and backup them to your local machine with optional zip archiving.
 
@@ -241,6 +241,15 @@ This file contains your GitHub token, settings, and backup history. On Unix syst
 1. **Shallow clone**: Not currently supported by the git2 library; selecting "shallow" performs a full clone
 2. **Auto-backup scheduling**: Settings exist in the UI but scheduled backups are not implemented
 3. **Token storage**: Stored in plain text JSON file (not in secure keychain)
+
+### Disclaimer
+
+This application is an independent project and is not sponsored by, endorsed by, or affiliated with GitHub or GitHub, Inc.
+
+This software is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0).
+It is provided **“as is”**, without warranty of any kind, express or implied, including but not limited to the warranties of merchantability or fitness for a particular purpose.
+Use at your own risk.
+
 
 ## License
 
