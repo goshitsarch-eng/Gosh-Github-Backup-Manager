@@ -17,6 +17,14 @@ A cross-platform Tauri desktop application to backup your GitHub repositories. C
 - **Backup History**: Track your past backup operations (last 50 entries retained)
 - **Dark/Light Theme**: Choose light, dark, or system preference
 
+## Screenshots
+
+![Screenshot 1](screenshots/img1.png)
+![Screenshot 2](screenshots/img2.png)
+![Screenshot 3](screenshots/img3.png)
+![Screenshot 4](screenshots/img4.png)
+
+
 ## Installation
 
 ### Linux
