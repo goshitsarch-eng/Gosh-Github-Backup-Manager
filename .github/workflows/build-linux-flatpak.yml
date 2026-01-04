@@ -42,7 +42,7 @@ jobs:
 
       - name: Copy DEB to Flatpak manifest location
         run: |
-          cp src-tauri/target/release/bundle/deb/*.deb packaging/gosh-github-backup-manager_1.0.0_amd64.deb
+          cp src-tauri/target/release/bundle/deb/*.deb packaging/gosh-github-backup-manager.deb
 
       - name: Build Flatpak
         uses: flatpak/flatpak-github-actions/flatpak-builder@v6
