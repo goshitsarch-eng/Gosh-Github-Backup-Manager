@@ -44,6 +44,13 @@ jobs:
         run: |
           cp src-tauri/target/release/bundle/deb/*.deb packaging/gosh-github-backup-manager.deb
 
+      - name: Free up disk space
+        run: |
+          rm -rf src-tauri/target
+          rm -rf node_modules
+          rm -rf ~/.cargo/registry
+          rm -rf ~/.rustup/toolchains/*/share
+
       - name: Build Flatpak
         uses: flatpak/flatpak-github-actions/flatpak-builder@v6
         with:
