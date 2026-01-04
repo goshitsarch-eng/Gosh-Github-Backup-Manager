@@ -29,7 +29,7 @@ jobs:
 
       - name: Install system dependencies
         run: |
-          dnf install -y gcc gcc-c++ make pkg-config \
+          dnf install -y gcc gcc-c++ make pkg-config perl \
             webkit2gtk4.1-devel gtk3-devel openssl-devel \
             libappindicator-gtk3-devel librsvg2-devel curl wget file \
             patchelf
