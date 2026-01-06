@@ -40,7 +40,8 @@
     "shortDescription": "Gosh Github Backup Manager",
     "longDescription": "A cross-platform app to backup your GitHub repositories",
     "macOS": {
-      "minimumSystemVersion": "10.15"
+      "minimumSystemVersion": "10.15",
+      "signingIdentity": null
     },
     "windows": {
       "nsis": {

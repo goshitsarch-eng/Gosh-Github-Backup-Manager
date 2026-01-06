@@ -6,6 +6,9 @@
   "author": "Gosh-Its-Arch",
   "license": "AGPL-3.0",
   "type": "module",
+  "overrides": {
+    "esbuild": ">=0.25.0"
+  },
   "scripts": {
     "dev:vite": "vite",
     "dev": "tauri dev",
