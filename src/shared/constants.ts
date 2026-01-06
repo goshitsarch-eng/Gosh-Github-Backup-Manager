@@ -61,9 +61,11 @@ export const DEFAULT_SETTINGS = {
 // App info
 export const APP_INFO = {
   name: 'Gosh Github Backup Manager',
-  version: '1.0.0',
+  version: '1.2.0',
   author: 'Gosh-Its-Arch',
   github: 'https://github.com/goshitsarch-eng/Gosh-Github-Backup-Manager',
+  license: 'AGPL-3.0',
+  description: 'A cross-platform app to backup your GitHub repositories',
 }
 
 // GitHub token scopes required

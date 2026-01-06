@@ -5,14 +5,17 @@ import {
   Download,
   Settings,
   Archive,
+  Info,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { APP_INFO } from '@shared/constants'
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/repositories', label: 'Repositories', icon: GitBranch },
   { to: '/backup', label: 'Backup', icon: Download },
   { to: '/settings', label: 'Settings', icon: Settings },
+  { to: '/about', label: 'About', icon: Info },
 ]
 
 export default function Sidebar() {
@@ -48,7 +51,7 @@ export default function Sidebar() {
       {/* Footer */}
       <div className="border-t p-4">
         <p className="text-xs text-muted-foreground">
-          Gosh Github Backup Manager v1.0.0
+          {APP_INFO.name} v{APP_INFO.version}
         </p>
       </div>
     </aside>

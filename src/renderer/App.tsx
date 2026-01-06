@@ -5,6 +5,7 @@ import Dashboard from './components/Dashboard/Dashboard'
 import RepoList from './components/Repositories/RepoList'
 import BackupManager from './components/Backup/BackupManager'
 import Settings from './components/Settings/Settings'
+import About from './components/About/About'
 import AuthScreen from './components/Auth/AuthScreen'
 import Spinner from './components/common/Spinner'
 
@@ -36,6 +37,7 @@ function App() {
         <Route path="/repositories" element={<RepoList />} />
         <Route path="/backup" element={<BackupManager />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/about" element={<About />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Layout>
