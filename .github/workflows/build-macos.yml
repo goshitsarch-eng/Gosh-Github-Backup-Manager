@@ -1,24 +1,19 @@
-name: macOS Build & Notarize
+name: Build macOS
 
 on:
   push:
     tags:
       - 'v*'
   workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version tag (optional)'
-        required: false
-        default: ''
 
 permissions:
   contents: write
 
 jobs:
   build-macos:
-    name: Build macOS DMG (Apple Silicon)
+    name: Build macOS (Apple Silicon)
     runs-on: macos-latest
-    environment: production
+    environment: ${{ github.event_name == 'push' && 'production' || '' }}
 
     steps:
       - name: Checkout repository
@@ -40,7 +35,25 @@ jobs:
         with:
           workspaces: './src-tauri -> target'
 
+      - name: Install frontend dependencies
+        run: npm ci
+
+      # Manual trigger: build unsigned .app only
+      - name: Build Tauri app (unsigned .app)
+        if: github.event_name == 'workflow_dispatch'
+        run: npx tauri build --target aarch64-apple-darwin --bundles app
+
+      - name: Upload .app bundle (manual)
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-app-arm64-unsigned
+          path: src-tauri/target/aarch64-apple-darwin/release/bundle/macos/*.app
+          if-no-files-found: error
+
+      # Tag trigger: build signed & notarized DMG for release
       - name: Import macOS signing certificate
+        if: startsWith(github.ref, 'refs/tags/')
         run: |
           echo "${{ secrets.MACOS_CERT_P12_GH }}" | base64 --decode > cert.p12
 
@@ -60,16 +73,15 @@ jobs:
             -s build.keychain
 
       - name: Extract signing identity
+        if: startsWith(github.ref, 'refs/tags/')
         id: signing
         run: |
           IDENTITY=$(security find-identity -v -p codesigning build.keychain | grep "Developer ID Application" | head -1 | sed 's/.*"\(.*\)".*/\1/')
           echo "identity=$IDENTITY" >> $GITHUB_OUTPUT
           echo "Found signing identity: $IDENTITY"
 
-      - name: Install frontend dependencies
-        run: npm ci
-
       - name: Build, sign & notarize (Tauri)
+        if: startsWith(github.ref, 'refs/tags/')
         env:
           APPLE_SIGNING_IDENTITY: ${{ steps.signing.outputs.identity }}
           APPLE_ID: ${{ secrets.APPLE_ID_GH }}
@@ -78,6 +90,7 @@ jobs:
         run: npx tauri build --target aarch64-apple-darwin
 
       - name: Upload DMG artifact
+        if: startsWith(github.ref, 'refs/tags/')
         uses: actions/upload-artifact@v4
         with:
           name: macos-dmg-arm64

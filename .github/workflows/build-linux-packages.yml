@@ -1,15 +1,10 @@
-name: Build Linux Packages (AppImage, RPM, DEB)
+name: Build Linux Packages
 
 on:
   push:
     tags:
       - 'v*'
   workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version tag (optional)'
-        required: false
-        default: ''
 
 permissions:
   contents: write
@@ -53,7 +48,22 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      # Manual trigger: build AppImage only
+      - name: Build Tauri app (AppImage only)
+        if: github.event_name == 'workflow_dispatch'
+        run: npx tauri build --bundles appimage
+
+      - name: Upload AppImage (manual)
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-appimage
+          path: src-tauri/target/release/bundle/appimage/*.AppImage
+          if-no-files-found: error
+
+      # Tag trigger: build all Linux bundles for release
       - name: Build Tauri app (all Linux bundles)
+        if: startsWith(github.ref, 'refs/tags/')
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -61,7 +71,8 @@ jobs:
           tauriScript: npx tauri
           args: --bundles appimage,deb,rpm
 
-      - name: Upload AppImage
+      - name: Upload AppImage (release)
+        if: startsWith(github.ref, 'refs/tags/')
         uses: actions/upload-artifact@v4
         with:
           name: linux-appimage
@@ -69,6 +80,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload DEB package
+        if: startsWith(github.ref, 'refs/tags/')
         uses: actions/upload-artifact@v4
         with:
           name: linux-deb
@@ -76,6 +88,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload RPM package
+        if: startsWith(github.ref, 'refs/tags/')
         uses: actions/upload-artifact@v4
         with:
           name: linux-rpm
