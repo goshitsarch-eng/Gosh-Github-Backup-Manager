@@ -18,8 +18,7 @@ finish-args:
   - --filesystem=home
   - --filesystem=xdg-documents
 
-  # System tray support
-  - --talk-name=org.kde.StatusNotifierWatcher
+  # Notifications
   - --talk-name=org.freedesktop.Notifications
 
   # Git operations
@@ -43,15 +42,8 @@ modules:
   - name: gosh-github-backup-manager
     buildsystem: simple
     build-commands:
-      # Extract the deb package
-      - ar x gosh-github-backup-manager.deb
-      - tar xf data.tar.gz
-
-      # Install binary
-      - install -Dm755 usr/bin/gosh-github-backup-manager -t /app/bin/
-
-      # Install libraries if present
-      - if [ -d usr/lib ]; then cp -r usr/lib/* /app/lib/ 2>/dev/null || true; fi
+      # Install pre-built binary
+      - install -Dm755 bin/gosh-github-backup-manager /app/bin/gosh-github-backup-manager
 
       # Install desktop file
       - install -Dm644 com.goshitsarcheng.gosh-github-backup-manager.desktop /app/share/applications/com.goshitsarcheng.gosh-github-backup-manager.desktop
@@ -59,15 +51,11 @@ modules:
       # Install metainfo
       - install -Dm644 com.goshitsarcheng.gosh-github-backup-manager.metainfo.xml /app/share/metainfo/com.goshitsarcheng.gosh-github-backup-manager.metainfo.xml
 
-      # Install icons (max 512x512 for Flatpak)
-      - install -Dm644 usr/share/icons/hicolor/128x128/apps/gosh-github-backup-manager.png /app/share/icons/hicolor/128x128/apps/com.goshitsarcheng.gosh-github-backup-manager.png
-      - install -Dm644 usr/share/icons/hicolor/256x256@2/apps/gosh-github-backup-manager.png /app/share/icons/hicolor/256x256/apps/com.goshitsarcheng.gosh-github-backup-manager.png
-
     sources:
-      # Local deb package
-      - type: file
-        path: ../gosh-github-backup-manager.deb
-        dest-filename: gosh-github-backup-manager.deb
+      # Pre-built binary (copied during CI)
+      - type: dir
+        path: bin
+        dest: bin
 
       # Desktop file
       - type: file
