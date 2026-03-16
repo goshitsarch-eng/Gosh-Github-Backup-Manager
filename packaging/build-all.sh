@@ -11,9 +11,7 @@ echo ""
 
 # Parse arguments
 BUILD_ALL=false
-BUILD_APPIMAGE=false
-BUILD_DEB=false
-BUILD_RPM=false
+BUILD_BINARY=false
 BUILD_FLATPAK=false
 
 if [ $# -eq 0 ]; then
@@ -25,14 +23,8 @@ for arg in "$@"; do
         --all)
             BUILD_ALL=true
             ;;
-        --appimage)
-            BUILD_APPIMAGE=true
-            ;;
-        --deb)
-            BUILD_DEB=true
-            ;;
-        --rpm)
-            BUILD_RPM=true
+        --binary)
+            BUILD_BINARY=true
             ;;
         --flatpak)
             BUILD_FLATPAK=true
@@ -41,10 +33,8 @@ for arg in "$@"; do
             echo "Usage: $0 [options]"
             echo ""
             echo "Options:"
-            echo "  --all       Build all package formats (default)"
-            echo "  --appimage  Build AppImage only"
-            echo "  --deb       Build DEB package only"
-            echo "  --rpm       Build RPM package only"
+            echo "  --all       Build binary and Flatpak (default)"
+            echo "  --binary    Build release binary only"
             echo "  --flatpak   Build Flatpak only"
             echo "  --help      Show this help message"
             exit 0
@@ -57,19 +47,12 @@ for arg in "$@"; do
 done
 
 if [ "$BUILD_ALL" = true ]; then
-    BUILD_APPIMAGE=true
-    BUILD_DEB=true
-    BUILD_RPM=true
+    BUILD_BINARY=true
     BUILD_FLATPAK=true
 fi
 
 # Check for required tools
 echo "Checking build dependencies..."
-
-if ! command -v npm &> /dev/null; then
-    echo "Error: npm is not installed"
-    exit 1
-fi
 
 if ! command -v cargo &> /dev/null; then
     echo "Error: cargo (Rust) is not installed"
@@ -78,38 +61,17 @@ fi
 
 cd "$PROJECT_ROOT"
 
-# Build the Tauri application (generates AppImage, DEB, RPM)
-echo ""
-echo "Building Tauri application..."
-echo ""
-
-npm ci
-npm run build
-
-# Output locations
-BUNDLE_DIR="$PROJECT_ROOT/src-tauri/target/release/bundle"
-
-echo ""
-echo "=========================================="
-echo "Build Results"
-echo "=========================================="
-
-if [ "$BUILD_APPIMAGE" = true ] && [ -d "$BUNDLE_DIR/appimage" ]; then
+# Build the release binary
+if [ "$BUILD_BINARY" = true ]; then
     echo ""
-    echo "AppImage:"
-    ls -la "$BUNDLE_DIR/appimage/"*.AppImage 2>/dev/null || echo "  Not found"
-fi
-
-if [ "$BUILD_DEB" = true ] && [ -d "$BUNDLE_DIR/deb" ]; then
+    echo "Building release binary..."
     echo ""
-    echo "DEB Package:"
-    ls -la "$BUNDLE_DIR/deb/"*.deb 2>/dev/null || echo "  Not found"
-fi
 
-if [ "$BUILD_RPM" = true ] && [ -d "$BUNDLE_DIR/rpm" ]; then
+    cargo build --release
+
     echo ""
-    echo "RPM Package:"
-    ls -la "$BUNDLE_DIR/rpm/"*.rpm 2>/dev/null || echo "  Not found"
+    echo "Binary:"
+    ls -la "$PROJECT_ROOT/target/release/gosh-github-backup-manager" 2>/dev/null || echo "  Not found"
 fi
 
 # Build Flatpak if requested
@@ -122,21 +84,22 @@ if [ "$BUILD_FLATPAK" = true ]; then
         echo "Install it with: sudo apt install flatpak-builder (Debian/Ubuntu)"
         echo "                 sudo dnf install flatpak-builder (Fedora)"
     else
-        # Copy the deb file to packaging directory
-        DEB_FILE=$(find "$BUNDLE_DIR/deb" -name "*.deb" | head -1)
-        if [ -n "$DEB_FILE" ]; then
-            cp "$DEB_FILE" "$SCRIPT_DIR/gosh-github-backup-manager_1.0.0_amd64.deb"
-
-            cd "$SCRIPT_DIR/flatpak"
-            chmod +x build-flatpak.sh
-            ./build-flatpak.sh
-
-            echo ""
-            echo "Flatpak:"
-            ls -la "$SCRIPT_DIR/"*.flatpak 2>/dev/null || echo "  Not found"
-        else
-            echo "Warning: DEB file not found, cannot build Flatpak"
+        # Ensure binary is built
+        if [ ! -f "$PROJECT_ROOT/target/release/gosh-github-backup-manager" ]; then
+            echo "Building release binary first..."
+            cargo build --release
         fi
+
+        mkdir -p "$SCRIPT_DIR/flatpak/bin"
+        cp "$PROJECT_ROOT/target/release/gosh-github-backup-manager" "$SCRIPT_DIR/flatpak/bin/"
+
+        cd "$SCRIPT_DIR/flatpak"
+        chmod +x build-flatpak.sh
+        ./build-flatpak.sh
+
+        echo ""
+        echo "Flatpak:"
+        ls -la "$SCRIPT_DIR/"*.flatpak 2>/dev/null || echo "  Not found"
     fi
 fi
 

@@ -5,11 +5,6 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version tag (optional)'
-        required: false
-        default: ''
 
 permissions:
   contents: write
@@ -25,39 +20,21 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
       - name: Install system dependencies
         run: |
           dnf install -y gcc gcc-c++ make pkg-config perl \
-            webkit2gtk4.1-devel gtk3-devel openssl-devel \
-            libappindicator-gtk3-devel librsvg2-devel curl wget file \
-            patchelf
+            openssl-devel curl wget file
 
-      - name: Install frontend dependencies
-        run: npm ci
+      - name: Build release binary
+        run: cargo build --release
 
-      - name: Build Tauri app (DEB for Flatpak input)
-        run: npm run build -- --bundles deb
-
-      - name: Copy DEB to Flatpak manifest location
+      - name: Prepare Flatpak sources
         run: |
-          cp src-tauri/target/release/bundle/deb/*.deb packaging/gosh-github-backup-manager.deb
-
-      - name: Free up disk space
-        run: |
-          rm -rf src-tauri/target
-          rm -rf node_modules
-          rm -rf ~/.cargo/registry
-          rm -rf ~/.rustup
-          rm -rf .flatpak-builder/cache
-          dnf clean all
+          mkdir -p packaging/flatpak/bin
+          cp target/release/gosh-github-backup-manager packaging/flatpak/bin/
 
       - name: Build Flatpak
         uses: flatpak/flatpak-github-actions/flatpak-builder@v6

@@ -1,5 +1,5 @@
 Name:           gosh-github-backup-manager
-Version:        1.0.0
+Version:        2.0.0
 Release:        1%{?dist}
 Summary:        A cross-platform app to backup your GitHub repositories
 
@@ -7,30 +7,19 @@ License:        AGPL-3.0
 URL:            https://github.com/Gosh-Its-Arch/Github-Backup-Manager
 Source0:        %{name}-%{version}.tar.gz
 
-BuildRequires:  nodejs >= 18
-BuildRequires:  npm
 BuildRequires:  rust >= 1.70
 BuildRequires:  cargo
-BuildRequires:  webkit2gtk4.1-devel
-BuildRequires:  gtk3-devel
 BuildRequires:  openssl-devel
-BuildRequires:  libappindicator-gtk3-devel
-BuildRequires:  librsvg2-devel
-BuildRequires:  curl
-BuildRequires:  wget
-BuildRequires:  file
+BuildRequires:  pkg-config
 
 Requires:       git
-Requires:       webkit2gtk4.1
-Requires:       gtk3
 Requires:       openssl-libs
-Requires:       libappindicator-gtk3
 
 %description
-Gosh Github Backup Manager is a modern desktop application that helps you
-backup your GitHub repositories to your local machine. It provides an
-intuitive interface for managing your repository backups with support for
-multiple backup modes including clone and mirror.
+Gosh Github Backup Manager is a native desktop application built with Rust
+and iced that helps you backup your GitHub repositories to your local machine.
+It provides an intuitive interface for managing your repository backups with
+support for multiple backup modes including clone and mirror.
 
 Features:
 - GitHub authentication via Personal Access Token
@@ -45,14 +34,13 @@ Features:
 %autosetup
 
 %build
-npm ci
-npm run build
+cargo build --release
 
 %install
 rm -rf %{buildroot}
 
 # Install binary
-install -Dm755 src-tauri/target/release/%{name} %{buildroot}%{_bindir}/%{name}
+install -Dm755 target/release/%{name} %{buildroot}%{_bindir}/%{name}
 
 # Install desktop file
 install -Dm644 packaging/com.goshitsarch-eng.gosh-github-backup-manager.desktop \
@@ -63,11 +51,11 @@ install -Dm644 packaging/com.goshitsarch-eng.gosh-github-backup-manager.metainfo
     %{buildroot}%{_metainfodir}/com.goshitsarch-eng.gosh-github-backup-manager.metainfo.xml
 
 # Install icons
-install -Dm644 src-tauri/icons/32x32.png \
+install -Dm644 assets/32x32.png \
     %{buildroot}%{_datadir}/icons/hicolor/32x32/apps/com.goshitsarch-eng.gosh-github-backup-manager.png
-install -Dm644 src-tauri/icons/128x128.png \
+install -Dm644 assets/128x128.png \
     %{buildroot}%{_datadir}/icons/hicolor/128x128/apps/com.goshitsarch-eng.gosh-github-backup-manager.png
-install -Dm644 src-tauri/icons/128x128@2x.png \
+install -Dm644 assets/128x128@2x.png \
     %{buildroot}%{_datadir}/icons/hicolor/256x256/apps/com.goshitsarch-eng.gosh-github-backup-manager.png
 
 %files
@@ -87,10 +75,10 @@ install -Dm644 src-tauri/icons/128x128@2x.png \
 /usr/bin/gtk-update-icon-cache %{_datadir}/icons/hicolor &> /dev/null || :
 
 %changelog
+* Mon Mar 16 2026 Gosh-Its-Arch <gosh@example.com> - 2.0.0-1
+- Migrated from Tauri/React to native Rust with iced GUI framework
+- Removed all JavaScript/Node.js dependencies
+- Pure Rust application with no web runtime overhead
+
 * Sun Dec 29 2024 Gosh-Its-Arch <gosh@example.com> - 1.0.0-1
 - Initial release
-- GitHub authentication via Personal Access Token
-- Repository browsing and filtering
-- Backup with clone and mirror modes
-- ZIP archive creation support
-- Light and dark theme support
