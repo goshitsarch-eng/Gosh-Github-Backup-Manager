@@ -11,7 +11,6 @@ Connect with your GitHub account, pick the repos you care about, and back them u
 ![Screenshot 3](screenshots/img3.png)
 ![Screenshot 4](screenshots/img4.png)
 ![Screenshot 5](screenshots/img5.png)
-![Screenshot 6](screenshots/img6.png)
 
 ## What it does
 
