@@ -308,3 +308,125 @@ jobs:
           files: |
             Gosh-GitHub-Backup-Manager-${{ steps.version.outputs.version }}-linux-aarch64.tar.gz
             Gosh-GitHub-Backup-Manager-${{ steps.version.outputs.version }}-aarch64.AppImage
+
+  # ────────────────────────────────────────────
+  # macOS (signed + notarized DMG)
+  # ────────────────────────────────────────────
+  macos:
+    runs-on: macos-latest
+    if: ${{ vars.MACOS_SIGNING_ENABLED == 'true' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+
+      - name: Build
+        run: cargo build --release
+
+      - name: Get version
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Import signing certificate
+        env:
+          CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+        run: |
+          echo "$CERTIFICATE_P12" | base64 --decode > certificate.p12
+          security create-keychain -p actions build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p actions build.keychain
+          security import certificate.p12 -k build.keychain -P "$CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k actions build.keychain
+          rm certificate.p12
+
+      - name: Create app bundle
+        run: |
+          APP_DIR="target/release/Gosh GitHub Backup Manager.app"
+          mkdir -p "$APP_DIR/Contents/MacOS"
+          mkdir -p "$APP_DIR/Contents/Resources"
+          cp target/release/gosh-github-backup-manager "$APP_DIR/Contents/MacOS/"
+          cp assets/icon.icns "$APP_DIR/Contents/Resources/AppIcon.icns"
+          cat > "$APP_DIR/Contents/Info.plist" << PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>CFBundleName</key><string>Gosh GitHub Backup Manager</string>
+              <key>CFBundleDisplayName</key><string>Gosh GitHub Backup Manager</string>
+              <key>CFBundleIdentifier</key><string>com.goshitsarch.github-backup-manager</string>
+              <key>CFBundleVersion</key><string>${{ steps.version.outputs.version }}</string>
+              <key>CFBundleShortVersionString</key><string>${{ steps.version.outputs.version }}</string>
+              <key>CFBundleExecutable</key><string>gosh-github-backup-manager</string>
+              <key>CFBundleIconFile</key><string>AppIcon</string>
+              <key>CFBundlePackageType</key><string>APPL</string>
+              <key>NSHighResolutionCapable</key><true/>
+              <key>LSMinimumSystemVersion</key><string>11.0</string>
+          </dict>
+          </plist>
+          PLIST
+
+      - name: Create entitlements
+        run: |
+          cat > entitlements.plist << 'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>com.apple.security.cs.allow-jit</key><true/>
+              <key>com.apple.security.cs.allow-unsigned-executable-memory</key><true/>
+              <key>com.apple.security.cs.disable-library-validation</key><true/>
+          </dict>
+          </plist>
+          EOF
+
+      - name: Sign app
+        env:
+          IDENTITY: ${{ secrets.MACOS_SIGNING_IDENTITY }}
+        run: |
+          APP_DIR="target/release/Gosh GitHub Backup Manager.app"
+          codesign --force --options runtime --entitlements entitlements.plist \
+            --sign "$IDENTITY" "$APP_DIR/Contents/MacOS/gosh-github-backup-manager" --timestamp
+          codesign --force --options runtime --entitlements entitlements.plist \
+            --sign "$IDENTITY" "$APP_DIR" --timestamp
+          codesign --verify --deep --strict "$APP_DIR"
+
+      - name: Notarize app
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: |
+          APP_DIR="target/release/Gosh GitHub Backup Manager.app"
+          ditto -c -k --keepParent "$APP_DIR" app-for-notarization.zip
+          xcrun notarytool submit app-for-notarization.zip \
+            --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_PASSWORD" --wait
+          xcrun stapler staple "$APP_DIR"
+
+      - name: Create and sign DMG
+        env:
+          IDENTITY: ${{ secrets.MACOS_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: |
+          APP_DIR="target/release/Gosh GitHub Backup Manager.app"
+          DMG_NAME="Gosh-GitHub-Backup-Manager-${{ steps.version.outputs.version }}-macOS.dmg"
+          DMG_DIR=$(mktemp -d)
+          cp -R "$APP_DIR" "$DMG_DIR/"
+          ln -s /Applications "$DMG_DIR/Applications"
+          hdiutil create -volname "Gosh GitHub Backup Manager" -srcfolder "$DMG_DIR" -ov -format UDZO "$DMG_NAME"
+          rm -rf "$DMG_DIR"
+          codesign --force --sign "$IDENTITY" "$DMG_NAME" --timestamp
+          xcrun notarytool submit "$DMG_NAME" \
+            --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_PASSWORD" --wait
+          xcrun stapler staple "$DMG_NAME"
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: Gosh-GitHub-Backup-Manager-${{ steps.version.outputs.version }}-macOS.dmg
