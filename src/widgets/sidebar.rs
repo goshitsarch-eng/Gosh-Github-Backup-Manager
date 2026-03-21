@@ -93,7 +93,7 @@ pub fn view(current_page: Page, is_authenticated: bool, user: Option<&GitHubUser
     .width(Length::Fill)
     .padding([8, 20])
     .style(theme::ghost_button)
-    .on_press(Message::OpenUrl("https://github.com/goshitsarch-eng/Gosh-Github-Backup-Manager".to_string()));
+    .on_press(Message::OpenUrl("https://docs.goshapps.com/7/gosh-github-backup-manager".to_string()));
 
     let logout_btn = button(
         text("Logout")

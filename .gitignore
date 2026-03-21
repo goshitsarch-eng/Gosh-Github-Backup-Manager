@@ -25,3 +25,4 @@ packaging/flatpak/repo
 packaging/flatpak/bin
 packaging/flatpak/.flatpak-builder
 *.flatpak
+manual.md
