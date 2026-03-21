@@ -1,6 +1,7 @@
 use crate::services::archive::ArchiveService;
 use crate::services::github::GitHubApiService;
 use crate::services::git::GitService;
+use crate::services::oauth::{self, DeviceCodeResponse, OAuthPollResult};
 use crate::services::storage::StorageService;
 use crate::theme;
 use crate::types::*;
@@ -63,6 +64,11 @@ pub struct GoshApp {
 
     // Theme
     pub current_theme: AppTheme,
+
+    // OAuth
+    pub auth_method: AuthMethod,
+    pub oauth_status: OAuthStatus,
+    pub oauth_poll_interval: u64,
 }
 
 #[derive(Debug, Clone)]
@@ -120,6 +126,15 @@ pub enum Message {
     SettingsSaved(Result<(), String>),
     DefaultFolderSelect,
     DefaultFolderSelected(Option<String>),
+
+    // OAuth
+    AuthMethodChanged(AuthMethod),
+    OAuthStartDeviceFlow,
+    OAuthDeviceCodeReceived(Result<DeviceCodeResponse, String>),
+    OAuthPollTick,
+    OAuthPollForToken(String),
+    OAuthPollResult(Result<OAuthPollResult, String>),
+    OAuthCancel,
 
     // External
     OpenUrl(String),
@@ -195,6 +210,9 @@ impl GoshApp {
             git_service: None,
             storage_service: storage_service.clone(),
             current_theme,
+            auth_method: AuthMethod::Token,
+            oauth_status: OAuthStatus::Idle,
+            oauth_poll_interval: 5,
         };
 
         // Try auto-login from stored token
@@ -288,7 +306,61 @@ impl GoshApp {
             );
         }
 
+        // OAuth polling — use non-capturing closure; device_code extracted in update()
+        if let OAuthStatus::WaitingForUser { expires_at, .. } = &self.oauth_status {
+            if chrono::Utc::now().timestamp() < *expires_at {
+                subs.push(
+                    iced::time::every(std::time::Duration::from_secs(self.oauth_poll_interval))
+                        .map(|_| Message::OAuthPollTick),
+                );
+            }
+        }
+
         Subscription::batch(subs)
+    }
+
+    fn complete_login(&mut self, token: &str, user: GitHubUser) -> Task<Message> {
+        self.github_service = Some(GitHubApiService::new(token));
+        self.git_service = Some(GitService::new(token));
+        self.user = Some(user.clone());
+        self.is_authenticated = true;
+        self.current_page = Page::Dashboard;
+        self.is_loading = false;
+        self.token_input.clear();
+        self.oauth_status = OAuthStatus::Idle;
+
+        let service = self.github_service.clone().unwrap();
+        let username = user.login.clone();
+
+        Task::batch([
+            Task::perform(
+                async move {
+                    service.get_all_repos().await.map_err(|e| e.to_string())
+                },
+                Message::ReposLoaded,
+            ),
+            {
+                let service = self.github_service.clone().unwrap();
+                Task::perform(
+                    async move {
+                        service.get_organizations().await.map_err(|e| e.to_string())
+                    },
+                    Message::OrgsLoaded,
+                )
+            },
+            {
+                let service = self.github_service.clone().unwrap();
+                Task::perform(
+                    async move {
+                        service
+                            .get_user_events(&username, 20)
+                            .await
+                            .map_err(|e| e.to_string())
+                    },
+                    Message::EventsLoaded,
+                )
+            },
+        ])
     }
 
     pub fn update(&mut self, message: Message) -> Task<Message> {
@@ -351,49 +423,20 @@ impl GoshApp {
                 self.is_loading = false;
                 match result {
                     Ok(user) => {
-                        let token = self.token_input.clone();
-                        self.github_service = Some(GitHubApiService::new(&token));
-                        self.git_service = Some(GitService::new(&token));
-                        self.user = Some(user.clone());
-                        self.is_authenticated = true;
-                        self.current_page = Page::Dashboard;
-                        self.token_input.clear();
-
-                        let service = self.github_service.clone().unwrap();
-                        let username = user.login.clone();
-
-                        Task::batch([
-                            Task::perform(
-                                async move {
-                                    service.get_all_repos().await.map_err(|e| e.to_string())
-                                },
-                                Message::ReposLoaded,
-                            ),
-                            {
-                                let service = self.github_service.clone().unwrap();
-                                Task::perform(
-                                    async move {
-                                        service.get_organizations().await.map_err(|e| e.to_string())
-                                    },
-                                    Message::OrgsLoaded,
-                                )
-                            },
-                            {
-                                let service = self.github_service.clone().unwrap();
-                                Task::perform(
-                                    async move {
-                                        service
-                                            .get_user_events(&username, 20)
-                                            .await
-                                            .map_err(|e| e.to_string())
-                                    },
-                                    Message::EventsLoaded,
-                                )
-                            },
-                        ])
+                        // Token comes from input (PAT flow) or stored token (OAuth flow)
+                        let token = if !self.token_input.is_empty() {
+                            self.token_input.clone()
+                        } else if let Ok(Some(t)) = self.storage_service.get_token() {
+                            t
+                        } else {
+                            self.auth_status = Some("No token available".to_string());
+                            return Task::none();
+                        };
+                        self.complete_login(&token, user)
                     }
                     Err(e) => {
-                        self.auth_status = Some(e);
+                        self.auth_status = Some(e.clone());
+                        self.oauth_status = OAuthStatus::Error(e);
                         Task::none()
                     }
                 }
@@ -734,6 +777,119 @@ impl GoshApp {
                 Task::none()
             }
 
+            // OAuth
+            Message::AuthMethodChanged(method) => {
+                self.auth_method = method;
+                self.oauth_status = OAuthStatus::Idle;
+                self.auth_status = None;
+                Task::none()
+            }
+            Message::OAuthStartDeviceFlow => {
+                self.oauth_status = OAuthStatus::RequestingCode;
+                self.auth_status = None;
+                let client_id = oauth::GITHUB_CLIENT_ID.to_string();
+                Task::perform(
+                    async move {
+                        oauth::request_device_code(&client_id).await
+                    },
+                    Message::OAuthDeviceCodeReceived,
+                )
+            }
+            Message::OAuthDeviceCodeReceived(result) => {
+                match result {
+                    Ok(resp) => {
+                        let uri = resp.verification_uri.clone();
+                        self.oauth_poll_interval = resp.interval;
+                        self.oauth_status = OAuthStatus::WaitingForUser {
+                            user_code: resp.user_code,
+                            verification_uri: resp.verification_uri,
+                            device_code: resp.device_code,
+                            expires_at: chrono::Utc::now().timestamp() + resp.expires_in as i64,
+                            interval: resp.interval,
+                        };
+                        let _ = open::that(&uri);
+                    }
+                    Err(e) => {
+                        self.oauth_status = OAuthStatus::Error(e);
+                    }
+                }
+                Task::none()
+            }
+            Message::OAuthPollTick => {
+                if let OAuthStatus::WaitingForUser { ref device_code, .. } = self.oauth_status {
+                    let dc = device_code.clone();
+                    let client_id = oauth::GITHUB_CLIENT_ID.to_string();
+                    Task::perform(
+                        async move {
+                            oauth::poll_for_token(&client_id, &dc).await
+                        },
+                        Message::OAuthPollResult,
+                    )
+                } else {
+                    Task::none()
+                }
+            }
+            Message::OAuthPollForToken(device_code) => {
+                let client_id = oauth::GITHUB_CLIENT_ID.to_string();
+                Task::perform(
+                    async move {
+                        oauth::poll_for_token(&client_id, &device_code).await
+                    },
+                    Message::OAuthPollResult,
+                )
+            }
+            Message::OAuthPollResult(result) => {
+                match result {
+                    Ok(OAuthPollResult::Success(token)) => {
+                        let storage = self.storage_service.clone();
+                        let _ = storage.set_token(&token);
+                        let token_clone = token.clone();
+                        self.is_loading = true;
+                        Task::perform(
+                            async move {
+                                let service = GitHubApiService::new(&token_clone);
+                                let user = service
+                                    .get_authenticated_user()
+                                    .await
+                                    .map_err(|e| e.to_string())?;
+                                Ok((token_clone, user))
+                            },
+                            |result: Result<(String, GitHubUser), String>| {
+                                match result {
+                                    Ok((_, user)) => Message::LoginResult(Ok(user)),
+                                    Err(e) => Message::LoginResult(Err(e)),
+                                }
+                            },
+                        )
+                    }
+                    Ok(OAuthPollResult::Pending) => Task::none(),
+                    Ok(OAuthPollResult::SlowDown) => {
+                        self.oauth_poll_interval += 5;
+                        Task::none()
+                    }
+                    Ok(OAuthPollResult::Expired) => {
+                        self.oauth_status = OAuthStatus::Error("Code expired, please try again".to_string());
+                        Task::none()
+                    }
+                    Ok(OAuthPollResult::AccessDenied) => {
+                        self.oauth_status = OAuthStatus::Error("Authorization denied".to_string());
+                        Task::none()
+                    }
+                    Ok(OAuthPollResult::Error(e)) => {
+                        self.oauth_status = OAuthStatus::Error(e);
+                        Task::none()
+                    }
+                    Err(e) => {
+                        self.oauth_status = OAuthStatus::Error(e);
+                        Task::none()
+                    }
+                }
+            }
+            Message::OAuthCancel => {
+                self.oauth_status = OAuthStatus::Idle;
+                Task::none()
+            }
+
             // External
             Message::OpenUrl(url) => {
                 let _ = open::that(&url);
@@ -918,9 +1074,23 @@ async fn perform_backup(
 
             let compression = options.zip_compression.unwrap_or(6);
             let exclude = options.exclude_patterns.clone().unwrap_or_default();
-            let (archive_tx, _archive_rx) = mpsc::unbounded_channel();
+            let (archive_tx, mut archive_rx) = mpsc::unbounded_channel::<ArchiveProgress>();
 
             archive_cancel.store(false, Ordering::Relaxed);
+
+            // Forward archive progress to backup progress channel
+            let progress_for_archive = progress.clone();
+            let tx_for_archive = progress_tx.clone();
+            let forward_handle = tokio::spawn(async move {
+                while let Some(ap) = archive_rx.recv().await {
+                    let mut p = progress_for_archive.lock().await;
+                    p.current_repo = Some(format!(
+                        "Creating zip archive... {}% ({}/{})",
+                        ap.progress, ap.processed_files, ap.total_files
+                    ));
+                    let _ = tx_for_archive.send(p.clone());
+                }
+            });
 
             let _ = ArchiveService::create_archive(
                 &options.destination,
@@ -931,6 +1101,8 @@ async fn perform_backup(
                 Some(archive_cancel),
             )
             .await;
+
+            let _ = forward_handle.await;
         }
     }
 

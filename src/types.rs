@@ -359,3 +359,23 @@ impl std::fmt::Display for AppTheme {
         }
     }
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AuthMethod {
+    Token,
+    OAuth,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum OAuthStatus {
+    Idle,
+    RequestingCode,
+    WaitingForUser {
+        user_code: String,
+        verification_uri: String,
+        device_code: String,
+        expires_at: i64,
+        interval: u64,
+    },
+    Error(String),
+}
