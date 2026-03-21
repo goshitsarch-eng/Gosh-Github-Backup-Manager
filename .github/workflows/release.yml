@@ -1,0 +1,310 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+  APP_NAME: gosh-github-backup-manager
+
+jobs:
+  # ────────────────────────────────────────────
+  # Windows NSIS Installers (x64 + ARM64)
+  # ────────────────────────────────────────────
+  windows:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-pc-windows-msvc
+            arch: x64
+          - target: aarch64-pc-windows-msvc
+            arch: arm64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      - name: Build
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Install NSIS
+        run: choco install nsis -y
+
+      - name: Get version
+        id: version
+        shell: bash
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Create NSIS installer script
+        shell: bash
+        run: |
+          cat > installer.nsi << 'NSIS_EOF'
+          !include "MUI2.nsh"
+
+          Name "Gosh GitHub Backup Manager"
+          OutFile "Gosh-GitHub-Backup-Manager-${{ steps.version.outputs.version }}-${{ matrix.arch }}-setup.exe"
+          InstallDir "$PROGRAMFILES\Gosh GitHub Backup Manager"
+          RequestExecutionLevel admin
+
+          !define MUI_ICON "assets\icon.ico"
+          !define MUI_UNICON "assets\icon.ico"
+          !define MUI_ABORTWARNING
+
+          !insertmacro MUI_PAGE_WELCOME
+          !insertmacro MUI_PAGE_DIRECTORY
+          !insertmacro MUI_PAGE_INSTFILES
+          !insertmacro MUI_PAGE_FINISH
+
+          !insertmacro MUI_UNPAGE_CONFIRM
+          !insertmacro MUI_UNPAGE_INSTFILES
+
+          !insertmacro MUI_LANGUAGE "English"
+
+          Section "Install"
+            SetOutPath "$INSTDIR"
+            File "target\${{ matrix.target }}\release\gosh-github-backup-manager.exe"
+            File "assets\icon.ico"
+
+            CreateDirectory "$SMPROGRAMS\Gosh GitHub Backup Manager"
+            CreateShortCut "$SMPROGRAMS\Gosh GitHub Backup Manager\Gosh GitHub Backup Manager.lnk" "$INSTDIR\gosh-github-backup-manager.exe" "" "$INSTDIR\icon.ico"
+            CreateShortCut "$DESKTOP\Gosh GitHub Backup Manager.lnk" "$INSTDIR\gosh-github-backup-manager.exe" "" "$INSTDIR\icon.ico"
+
+            WriteUninstaller "$INSTDIR\uninstall.exe"
+
+            WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\GoshGitHubBackupManager" "DisplayName" "Gosh GitHub Backup Manager"
+            WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\GoshGitHubBackupManager" "UninstallString" '"$INSTDIR\uninstall.exe"'
+            WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\GoshGitHubBackupManager" "DisplayIcon" "$INSTDIR\icon.ico"
+            WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\GoshGitHubBackupManager" "DisplayVersion" "${{ steps.version.outputs.version }}"
+            WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\GoshGitHubBackupManager" "Publisher" "Gosh-Its-Arch"
+          SectionEnd
+
+          Section "Uninstall"
+            Delete "$INSTDIR\gosh-github-backup-manager.exe"
+            Delete "$INSTDIR\icon.ico"
+            Delete "$INSTDIR\uninstall.exe"
+            RMDir "$INSTDIR"
+
+            Delete "$SMPROGRAMS\Gosh GitHub Backup Manager\Gosh GitHub Backup Manager.lnk"
+            RMDir "$SMPROGRAMS\Gosh GitHub Backup Manager"
+            Delete "$DESKTOP\Gosh GitHub Backup Manager.lnk"
+
+            DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\GoshGitHubBackupManager"
+          SectionEnd
+          NSIS_EOF
+
+      - name: Build NSIS installer
+        run: makensis installer.nsi
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer-${{ matrix.arch }}
+          path: "*.exe"
+          if-no-files-found: error
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: Gosh-GitHub-Backup-Manager-${{ steps.version.outputs.version }}-${{ matrix.arch }}-setup.exe
+
+  # ────────────────────────────────────────────
+  # Linux x64 (AppImage + tarball)
+  # ────────────────────────────────────────────
+  linux-x64:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libssl-dev pkg-config build-essential \
+            libfuse2 file desktop-file-utils
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+
+      - name: Build
+        run: cargo build --release
+
+      - name: Get version
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      # ── Tarball ──
+      - name: Create tarball
+        run: |
+          mkdir -p dist/gosh-github-backup-manager
+          cp target/release/gosh-github-backup-manager dist/gosh-github-backup-manager/
+          cp assets/icon.png dist/gosh-github-backup-manager/
+          cp packaging/com.goshitsarch-eng.gosh-github-backup-manager.desktop dist/gosh-github-backup-manager/
+          cp README.md LICENSE dist/gosh-github-backup-manager/ 2>/dev/null || true
+          cd dist
+          tar czf ../Gosh-GitHub-Backup-Manager-${{ steps.version.outputs.version }}-linux-x86_64.tar.gz gosh-github-backup-manager
+
+      # ── AppImage ──
+      - name: Download appimagetool
+        run: |
+          wget -q https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
+          chmod +x appimagetool
+
+      - name: Create AppDir
+        run: |
+          mkdir -p AppDir/usr/bin
+          mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
+          mkdir -p AppDir/usr/share/applications
+
+          cp target/release/gosh-github-backup-manager AppDir/usr/bin/
+          cp assets/icon.png AppDir/usr/share/icons/hicolor/256x256/apps/com.goshitsarch-eng.gosh-github-backup-manager.png
+          cp packaging/com.goshitsarch-eng.gosh-github-backup-manager.desktop AppDir/usr/share/applications/
+          cp packaging/com.goshitsarch-eng.gosh-github-backup-manager.desktop AppDir/
+
+          # AppImage needs icon at root
+          cp assets/icon.png AppDir/com.goshitsarch-eng.gosh-github-backup-manager.png
+
+          # AppRun
+          cat > AppDir/AppRun << 'APPRUN'
+          #!/bin/bash
+          SELF=$(readlink -f "$0")
+          HERE=${SELF%/*}
+          exec "${HERE}/usr/bin/gosh-github-backup-manager" "$@"
+          APPRUN
+          chmod +x AppDir/AppRun
+
+      - name: Build AppImage
+        run: |
+          ARCH=x86_64 ./appimagetool AppDir Gosh-GitHub-Backup-Manager-${{ steps.version.outputs.version }}-x86_64.AppImage
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-x64
+          path: |
+            *.tar.gz
+            *.AppImage
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            Gosh-GitHub-Backup-Manager-${{ steps.version.outputs.version }}-linux-x86_64.tar.gz
+            Gosh-GitHub-Backup-Manager-${{ steps.version.outputs.version }}-x86_64.AppImage
+
+  # ────────────────────────────────────────────
+  # Linux ARM64 (AppImage + tarball)
+  # ────────────────────────────────────────────
+  linux-arm64:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies and cross-compilation tools
+        run: |
+          sudo dpkg --add-architecture arm64
+          sudo sed -i 's/^deb /deb [arch=amd64] /' /etc/apt/sources.list
+          echo "deb [arch=arm64] http://ports.ubuntu.com/ jammy main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list
+          echo "deb [arch=arm64] http://ports.ubuntu.com/ jammy-updates main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list
+          sudo apt-get update
+          sudo apt-get install -y \
+            gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
+            libssl-dev:arm64 pkg-config \
+            libfuse2 file desktop-file-utils
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-unknown-linux-gnu
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          key: aarch64-unknown-linux-gnu
+
+      - name: Build
+        env:
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+          PKG_CONFIG_SYSROOT_DIR: /usr/aarch64-linux-gnu
+          PKG_CONFIG_PATH: /usr/lib/aarch64-linux-gnu/pkgconfig
+          OPENSSL_DIR: /usr
+          OPENSSL_INCLUDE_DIR: /usr/include
+          OPENSSL_LIB_DIR: /usr/lib/aarch64-linux-gnu
+        run: cargo build --release --target aarch64-unknown-linux-gnu
+
+      - name: Get version
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      # ── Tarball ──
+      - name: Create tarball
+        run: |
+          mkdir -p dist/gosh-github-backup-manager
+          cp target/aarch64-unknown-linux-gnu/release/gosh-github-backup-manager dist/gosh-github-backup-manager/
+          cp assets/icon.png dist/gosh-github-backup-manager/
+          cp packaging/com.goshitsarch-eng.gosh-github-backup-manager.desktop dist/gosh-github-backup-manager/
+          cp README.md LICENSE dist/gosh-github-backup-manager/ 2>/dev/null || true
+          cd dist
+          tar czf ../Gosh-GitHub-Backup-Manager-${{ steps.version.outputs.version }}-linux-aarch64.tar.gz gosh-github-backup-manager
+
+      # ── AppImage ──
+      - name: Download appimagetool
+        run: |
+          wget -q https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
+          chmod +x appimagetool
+
+      - name: Create AppDir
+        run: |
+          mkdir -p AppDir/usr/bin
+          mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
+          mkdir -p AppDir/usr/share/applications
+
+          cp target/aarch64-unknown-linux-gnu/release/gosh-github-backup-manager AppDir/usr/bin/
+          cp assets/icon.png AppDir/usr/share/icons/hicolor/256x256/apps/com.goshitsarch-eng.gosh-github-backup-manager.png
+          cp packaging/com.goshitsarch-eng.gosh-github-backup-manager.desktop AppDir/usr/share/applications/
+          cp packaging/com.goshitsarch-eng.gosh-github-backup-manager.desktop AppDir/
+
+          cp assets/icon.png AppDir/com.goshitsarch-eng.gosh-github-backup-manager.png
+
+          cat > AppDir/AppRun << 'APPRUN'
+          #!/bin/bash
+          SELF=$(readlink -f "$0")
+          HERE=${SELF%/*}
+          exec "${HERE}/usr/bin/gosh-github-backup-manager" "$@"
+          APPRUN
+          chmod +x AppDir/AppRun
+
+      - name: Build AppImage
+        run: |
+          ARCH=aarch64 ./appimagetool AppDir Gosh-GitHub-Backup-Manager-${{ steps.version.outputs.version }}-aarch64.AppImage
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-arm64
+          path: |
+            *.tar.gz
+            *.AppImage
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            Gosh-GitHub-Backup-Manager-${{ steps.version.outputs.version }}-linux-aarch64.tar.gz
+            Gosh-GitHub-Backup-Manager-${{ steps.version.outputs.version }}-aarch64.AppImage
