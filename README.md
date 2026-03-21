@@ -42,7 +42,7 @@ open "target/release/Gosh GitHub Backup Manager.app"
 
 ### Pre-built binaries
 
-Check the [Releases](https://github.com/goshitsarch-eng/Gosh-Github-Backup-Manager/releases) page for downloads. A Flatpak is also available for Linux.
+Check the [Releases](https://github.com/goshitsarch-eng/Gosh-Github-Backup-Manager/releases) page for downloads. Also available on the [AUR](https://aur.archlinux.org/packages/gosh-github-backup-manager-bin) for Arch Linux users.
 
 ## GitHub token scopes
 
