@@ -1,6 +1,7 @@
 use crate::app::{GoshApp, Message};
+use crate::theme;
 use crate::types::BackupTab;
-use iced::widget::{button, column, container, pick_list, progress_bar, row, scrollable, slider, text, text_input, toggler, Space};
+use iced::widget::{button, column, container, progress_bar, row, scrollable, slider, text, text_input, toggler, Space};
 use iced::{Alignment, Element, Length};
 
 impl GoshApp {
@@ -8,32 +9,15 @@ impl GoshApp {
         let selected_count = self.selected_repos.len();
 
         // Header
-        let header = row![
-            column![
-                text("Backup Manager").size(24),
-                text(format!("{} repositories selected", selected_count)).size(13),
-            ]
-            .spacing(4),
-            Space::with_width(Length::Fill),
-            if !self.is_backup_running && selected_count > 0 && !self.backup_options.destination.is_empty() {
-                Element::from(
-                    button(text("Start Backup").size(13))
-                        .padding([10, 20])
-                        .style(button::primary)
-                        .on_press(Message::BackupStart)
-                )
-            } else if self.is_backup_running {
-                Element::from(
-                    button(text("Cancel").size(13))
-                        .padding([10, 20])
-                        .style(button::danger)
-                        .on_press(Message::BackupCancel)
-                )
-            } else {
-                Element::from(Space::with_width(0))
-            },
+        let header = column![
+            text("Backup Configurations")
+                .size(28)
+                .font(theme::FONT_HEADLINE),
+            text("Configure the synchronization parameters for your local repository mirrors.")
+                .size(13)
+                .color(theme::colors::ON_SURFACE_VARIANT),
         ]
-        .align_y(Alignment::Center);
+        .spacing(8);
 
         // Tabs
         let progress_label = if self.is_backup_running {
@@ -43,13 +27,20 @@ impl GoshApp {
         };
 
         let make_tab = |label: String, tab: BackupTab, is_active: bool| -> Element<'static, Message> {
-            let btn = button(text(label).size(13))
-                .padding([8, 16])
-                .on_press(Message::BackupTabChanged(tab));
+            let btn = button(
+                text(label)
+                    .size(11)
+                    .font(theme::FONT_HEADLINE)
+            )
+            .padding([8, 20]);
             if is_active {
-                btn.style(button::primary).into()
+                btn.style(theme::tab_active)
+                    .on_press(Message::BackupTabChanged(tab))
+                    .into()
             } else {
-                btn.style(button::secondary).into()
+                btn.style(theme::tab_inactive)
+                    .on_press(Message::BackupTabChanged(tab))
+                    .into()
             }
         };
 
@@ -67,16 +58,88 @@ impl GoshApp {
             BackupTab::History => self.view_backup_history(),
         };
 
+        // Footer action bar
+        let footer: Element<Message> = if self.backup_active_tab == BackupTab::Options {
+            let status_indicator = row![
+                text("\u{25CF}")
+                    .size(8)
+                    .color(if self.is_backup_running { theme::colors::PRIMARY } else { theme::colors::SECONDARY }),
+                text(if self.is_backup_running { "Backup in progress" } else { "System Idle - Ready for process" })
+                    .size(11)
+                    .font(theme::FONT_MONO)
+                    .color(theme::colors::ON_SURFACE_VARIANT),
+            ]
+            .spacing(8)
+            .align_y(Alignment::Center);
+
+            let action_btn = if self.is_backup_running {
+                Element::from(
+                    button(
+                        row![
+                            text("\u{25A0}").size(14),
+                            text("Stop Operation")
+                                .size(13)
+                                .font(theme::FONT_HEADLINE),
+                        ]
+                        .spacing(8)
+                        .align_y(Alignment::Center)
+                    )
+                    .padding([14, 32])
+                    .style(theme::danger_button)
+                    .on_press(Message::BackupCancel)
+                )
+            } else {
+                Element::from(
+                    button(
+                        row![
+                            text("Start Backup")
+                                .size(13)
+                                .font(theme::FONT_HEADLINE),
+                            text("\u{2192}").size(16),
+                        ]
+                        .spacing(12)
+                        .align_y(Alignment::Center)
+                    )
+                    .padding([14, 32])
+                    .style(theme::primary_button)
+                    .on_press(Message::BackupStart)
+                )
+            };
+
+            container(
+                row![
+                    status_indicator,
+                    Space::with_width(Length::Fill),
+                    action_btn,
+                ]
+                .align_y(Alignment::Center)
+            )
+            .padding([24, 0])
+            .width(Length::Fill)
+            .style(|_: &iced::Theme| iced::widget::container::Style {
+                border: iced::Border {
+                    color: theme::colors::WHITE_5,
+                    width: 1.0,
+                    radius: 0.0.into(),
+                },
+                ..Default::default()
+            })
+            .into()
+        } else {
+            Space::with_height(0).into()
+        };
+
         let content = column![
             header,
-            Space::with_height(12),
-            tabs,
-            Space::with_height(12),
-            tab_content,
             Space::with_height(20),
+            tabs,
+            Space::with_height(16),
+            tab_content,
+            footer,
+            Space::with_height(24),
         ]
-        .spacing(4)
-        .padding(24);
+        .spacing(0)
+        .padding(32);
 
         scrollable(content)
             .width(Length::Fill)
@@ -85,130 +148,198 @@ impl GoshApp {
     }
 
     fn view_backup_options(&self) -> Element<'_, Message> {
-        // Destination
-        let dest_row = row![
-            text_input("Select backup destination...", &self.backup_options.destination)
-                .padding(8)
+        // ---- Left Column (7/12) ----
+
+        // Backup Mode Selection
+        let mode_section = {
+            let is_full = self.backup_options.clone_type == "full";
+
+            let full_btn = button(
+                column![
+                    text("Full Clone")
+                        .size(13)
+                        .font(theme::FONT_HEADLINE)
+                        .color(if is_full { theme::colors::ON_SURFACE } else { theme::colors::ON_SURFACE_VARIANT }),
+                    text("Downloads all branches and entire commit history.")
+                        .size(11)
+                        .color(theme::colors::ON_SURFACE_VARIANT),
+                ]
+                .spacing(6)
+            )
+            .padding(16)
+            .width(Length::Fill)
+            .style(if is_full { theme::mode_card_active } else { theme::mode_card_inactive })
+            .on_press(Message::BackupCloneTypeChanged("full".to_string()));
+
+            let mirror_btn = button(
+                column![
+                    text("Mirror Clone")
+                        .size(13)
+                        .font(theme::FONT_HEADLINE)
+                        .color(if !is_full { theme::colors::ON_SURFACE } else { theme::colors::ON_SURFACE_VARIANT }),
+                    text("Exact remote mapping with refs/notes and server-side structure.")
+                        .size(11)
+                        .color(theme::colors::ON_SURFACE_VARIANT),
+                ]
+                .spacing(6)
+            )
+            .padding(16)
+            .width(Length::Fill)
+            .style(if !is_full { theme::mode_card_active } else { theme::mode_card_inactive })
+            .on_press(Message::BackupCloneTypeChanged("mirror".to_string()));
+
+            let full_card: Element<'_, Message> = full_btn.into();
+
+            let mirror_card: Element<'_, Message> = mirror_btn.into();
+
+            column![
+                section_label("BACKUP MODE"),
+                row![full_card, mirror_card].spacing(12),
+            ]
+            .spacing(12)
+        };
+
+        // Target Folder
+        let dest_section = column![
+            section_label("TARGET FOLDER"),
+            text_input("Path to backup directory...", &self.backup_options.destination)
+                .padding(12)
                 .size(13)
+                .font(theme::FONT_MONO)
+                .style(theme::surface_input)
                 .width(Length::Fill),
-            button(text("Browse").size(13))
-                .padding([8, 16])
-                .on_press(Message::BackupSelectFolder),
+            button(
+                text("Browse")
+                    .size(11)
+                    .font(theme::FONT_MONO)
+            )
+            .padding([8, 16])
+            .style(theme::ghost_button)
+            .on_press(Message::BackupSelectFolder),
         ]
         .spacing(8);
 
-        let dest_section = container(
-            column![
-                text("Destination").size(15),
-                dest_row,
-            ]
-            .spacing(8)
-        )
-        .padding(16)
-        .width(Length::Fill)
-        .style(container::bordered_box);
-
-        // Clone settings
-        let clone_types = vec![
-            "full".to_string(),
-            "mirror".to_string(),
-        ];
-        let current_clone = Some(self.backup_options.clone_type.clone());
-
-        let clone_picker = pick_list(
-            clone_types,
-            current_clone,
-            |val| Message::BackupCloneTypeChanged(val),
-        )
-        .padding(8)
-        .text_size(13);
-
+        // Performance
         let concurrent = self.backup_options.max_concurrent.unwrap_or(3) as f64;
-        let concurrent_slider = row![
-            text(format!("Concurrent: {}", concurrent as u8)).size(13),
-            slider(1.0..=5.0, concurrent, |val| {
-                Message::BackupConcurrentChanged(val as u8)
-            })
-            .step(1.0)
-            .width(Length::Fill),
-        ]
-        .spacing(12)
-        .align_y(Alignment::Center);
-
-        let clone_section = container(
-            column![
-                text("Clone Settings").size(15),
-                row![text("Clone type:").size(13), clone_picker].spacing(8).align_y(Alignment::Center),
-                concurrent_slider,
+        let perf_section = column![
+            row![
+                section_label("PERFORMANCE"),
+                Space::with_width(Length::Fill),
+                text("CPU THREAD OPTIMIZATION")
+                    .size(10)
+                    .font(theme::FONT_MONO)
+                    .color(theme::colors::TERTIARY),
             ]
-            .spacing(8)
-        )
-        .padding(16)
-        .width(Length::Fill)
-        .style(container::bordered_box);
+            .align_y(Alignment::End),
+            container(
+                column![
+                    row![
+                        text("Concurrent Operations").size(13),
+                        Space::with_width(Length::Fill),
+                        text(format!("{}", concurrent as u8))
+                            .size(13)
+                            .font(theme::FONT_MONO)
+                            .color(theme::colors::PRIMARY),
+                    ],
+                    slider(1.0..=8.0, concurrent, |val| {
+                        Message::BackupConcurrentChanged(val as u8)
+                    })
+                    .step(1.0)
+                    .width(Length::Fill),
+                    row![
+                        text("LOW IMPACT (1)")
+                            .size(10)
+                            .font(theme::FONT_MONO)
+                            .color(theme::colors::OUTLINE),
+                        Space::with_width(Length::Fill),
+                        text("AGGRESSIVE (8)")
+                            .size(10)
+                            .font(theme::FONT_MONO)
+                            .color(theme::colors::OUTLINE),
+                    ],
+                ]
+                .spacing(8)
+            )
+            .padding(20)
+            .style(theme::card),
+        ]
+        .spacing(12);
 
-        // Include/Exclude
+        // Include/Exclude togglers
         let include_forks = self.backup_options.include_forks.unwrap_or(true);
         let include_archived = self.backup_options.include_archived.unwrap_or(false);
 
-        let split_options = vec![
-            "none".to_string(),
-            "owner".to_string(),
-        ];
-        let current_split = self.backup_options.split_by.clone().or(Some("owner".to_string()));
+        let include_section = column![
+            section_label("INCLUDE"),
+            toggler(include_forks)
+                .label("Include forked repositories")
+                .on_toggle(Message::BackupIncludeForksChanged)
+                .text_size(13)
+                .size(20),
+            toggler(include_archived)
+                .label("Include archived repositories")
+                .on_toggle(Message::BackupIncludeArchivedChanged)
+                .text_size(13)
+                .size(20),
+        ]
+        .spacing(12);
 
-        let include_section = container(
-            column![
-                text("Include / Organize").size(15),
-                toggler(include_forks)
-                    .label("Include forked repositories")
-                    .on_toggle(Message::BackupIncludeForksChanged)
-                    .text_size(13)
-                    .size(20),
-                toggler(include_archived)
-                    .label("Include archived repositories")
-                    .on_toggle(Message::BackupIncludeArchivedChanged)
-                    .text_size(13)
-                    .size(20),
-                row![
-                    text("Organize by:").size(13),
-                    pick_list(split_options, current_split, Message::BackupSplitByChanged)
-                        .padding(8)
-                        .text_size(13),
-                ]
-                .spacing(8)
-                .align_y(Alignment::Center),
-            ]
-            .spacing(8)
-        )
-        .padding(16)
-        .width(Length::Fill)
-        .style(container::bordered_box);
+        let left_col = column![
+            mode_section,
+            Space::with_height(24),
+            dest_section,
+            Space::with_height(24),
+            perf_section,
+            Space::with_height(24),
+            include_section,
+        ]
+        .width(Length::FillPortion(7));
 
-        // Archive settings
+        // ---- Right Column (5/12) ----
+
+        // Archive Options
         let create_zip = self.backup_options.create_zip.unwrap_or(false);
         let compression = self.backup_options.zip_compression.unwrap_or(6) as f64;
 
         let archive_section = container(
             column![
-                text("Archive").size(15),
-                toggler(create_zip)
-                    .label("Create ZIP archive after backup")
-                    .on_toggle(Message::BackupCreateZipChanged)
-                    .text_size(13)
-                    .size(20),
+                section_label("ARCHIVE OPTIONS"),
+                Space::with_height(8),
+                row![
+                    column![
+                        text("Create Zip Archives")
+                            .size(13)
+                            .font(theme::FONT_HEADLINE),
+                        text("Compress repository after cloning")
+                            .size(11)
+                            .color(theme::colors::ON_SURFACE_VARIANT),
+                    ]
+                    .spacing(4)
+                    .width(Length::Fill),
+                    toggler(create_zip)
+                        .on_toggle(Message::BackupCreateZipChanged)
+                        .size(20),
+                ]
+                .align_y(Alignment::Center),
                 if create_zip {
                     Element::from(
-                        row![
-                            text(format!("Compression: {}", compression as u8)).size(13),
+                        column![
+                            Space::with_height(16),
+                            row![
+                                text("Compression Level").size(12),
+                                Space::with_width(Length::Fill),
+                                text(format!("Level {}", compression as u8))
+                                    .size(11)
+                                    .font(theme::FONT_MONO)
+                                    .color(theme::colors::TERTIARY),
+                            ],
                             slider(0.0..=9.0, compression, |val| {
                                 Message::BackupCompressionChanged(val as u8)
                             })
                             .step(1.0)
                             .width(Length::Fill),
                         ]
-                        .spacing(12)
-                        .align_y(Alignment::Center)
+                        .spacing(8)
                     )
                 } else {
                     Element::from(Space::with_height(0))
@@ -216,17 +347,41 @@ impl GoshApp {
             ]
             .spacing(8)
         )
-        .padding(16)
+        .padding(24)
         .width(Length::Fill)
-        .style(container::bordered_box);
+        .style(theme::card);
 
-        let settings_row = row![
-            column![dest_section, include_section].spacing(12).width(Length::FillPortion(1)),
-            column![clone_section, archive_section].spacing(12).width(Length::FillPortion(1)),
+        // Info card
+        let info_card = container(
+            column![
+                row![
+                    text("\u{24D8}")
+                        .size(16)
+                        .color(theme::colors::TERTIARY),
+                    text("Optimization Note")
+                        .size(13)
+                        .font(theme::FONT_HEADLINE_MEDIUM),
+                ]
+                .spacing(8)
+                .align_y(Alignment::Center),
+                Space::with_height(8),
+                text("Higher compression levels significantly increase CPU usage during the archival phase. We recommend Level 5 for most source code repositories.")
+                    .size(11)
+                    .color(theme::colors::ON_SURFACE_VARIANT),
+            ]
+        )
+        .padding(20)
+        .width(Length::Fill)
+        .style(theme::card_low);
+
+        let right_col = column![
+            archive_section,
+            Space::with_height(16),
+            info_card,
         ]
-        .spacing(12);
+        .width(Length::FillPortion(5));
 
-        settings_row.into()
+        row![left_col, Space::with_width(24), right_col].into()
     }
 
     fn view_backup_progress(&self) -> Element<'_, Message> {
@@ -237,96 +392,186 @@ impl GoshApp {
 
             let elapsed_ms = chrono::Utc::now().timestamp_millis() - progress.start_time;
             let elapsed_secs = elapsed_ms / 1000;
-            let elapsed_str = format!("{}m {}s", elapsed_secs / 60, elapsed_secs % 60);
+            let elapsed_str = format!("{:02}:{:02}:{:02}", elapsed_secs / 3600, (elapsed_secs / 60) % 60, elapsed_secs % 60);
 
             let remaining_str = if pct > 0.0 && pct < 1.0 {
                 let total_est = elapsed_ms as f32 / pct;
                 let remaining = (total_est - elapsed_ms as f32) / 1000.0;
-                format!("~{}m {}s", remaining as i64 / 60, remaining as i64 % 60)
+                let r = remaining as i64;
+                format!("{:02}:{:02}:{:02}", r / 3600, (r / 60) % 60, r % 60)
             } else {
                 "---".to_string()
             };
 
-            let overall = column![
-                text(format!("Overall Progress: {:.0}%", pct * 100.0)).size(15),
-                progress_bar(0.0..=1.0, pct).height(8),
-                row![
-                    text(format!("Completed: {}", progress.completed_repos)).size(12),
-                    text(format!("Failed: {}", progress.failed_repos)).size(12),
-                    text(format!("Remaining: {}", progress.total_repos - progress.completed_repos - progress.failed_repos)).size(12),
-                    Space::with_width(Length::Fill),
-                    text(format!("Elapsed: {}", elapsed_str)).size(12),
-                    text(format!("Remaining: {}", remaining_str)).size(12),
-                ]
-                .spacing(16),
-            ]
-            .spacing(8);
-
-            let current = if let Some(ref repo) = progress.current_repo {
-                text(format!("Currently: {}", repo)).size(13)
-            } else if !progress.is_running {
-                text("Backup complete").size(13)
-            } else {
-                text("Starting...").size(13)
-            };
-
-            // Per-repo status list
-            let mut repo_list = column![].spacing(4);
-            for rp in &progress.repos {
-                let icon = match rp.status.as_str() {
-                    "complete" => "\u{2713}",
-                    "failed" => "\u{2717}",
-                    "cloning" => "\u{21BB}",
-                    _ => "\u{25CB}",
-                };
-
-                let status_color = match rp.status.as_str() {
-                    "complete" => iced::Color::from_rgb(0.2, 0.8, 0.2),
-                    "failed" => iced::Color::from_rgb(0.9, 0.3, 0.3),
-                    "cloning" => iced::Color::from_rgb(0.3, 0.6, 0.9),
-                    _ => iced::Color::from_rgb(0.5, 0.5, 0.5),
-                };
-
-                let error_text = if let Some(ref err) = rp.error {
-                    text(err.as_str()).size(11).color(iced::Color::from_rgb(0.9, 0.3, 0.3))
-                } else {
-                    text("").size(11)
-                };
-
-                let repo_row = container(
-                    column![
-                        row![
-                            text(icon).size(14).color(status_color),
-                            text(&rp.repo_name).size(12),
-                            Space::with_width(Length::Fill),
-                            text(&rp.status).size(11),
+            // Large percentage display
+            let pct_display = container(
+                column![
+                    text("GLOBAL COMPLETION")
+                        .size(10)
+                        .font(theme::FONT_MONO)
+                        .color(theme::colors::PRIMARY),
+                    text(format!("{:.0}%", pct * 100.0))
+                        .size(56)
+                        .font(theme::FONT_HEADLINE)
+                        .color(theme::colors::PRIMARY_CONTAINER),
+                    Space::with_height(16),
+                    row![
+                        column![
+                            text("Estimated Remaining")
+                                .size(11)
+                                .color(theme::colors::ON_SURFACE_VARIANT),
+                            text(remaining_str.clone())
+                                .size(18)
+                                .font(theme::FONT_MONO),
                         ]
-                        .spacing(8)
-                        .align_y(Alignment::Center),
-                        error_text,
-                    ]
-                    .spacing(2)
-                )
-                .padding([6, 12])
-                .width(Length::Fill)
-                .style(container::bordered_box);
+                        .spacing(4),
+                        Space::with_width(Length::Fill),
+                        column![
+                            text("Elapsed")
+                                .size(11)
+                                .color(theme::colors::ON_SURFACE_VARIANT),
+                            text(elapsed_str.clone())
+                                .size(18)
+                                .font(theme::FONT_MONO)
+                                .color(theme::colors::SECONDARY),
+                        ]
+                        .spacing(4),
+                    ],
+                    Space::with_height(12),
+                    progress_bar(0.0..=1.0, pct)
+                        .height(6)
+                        .style(theme::progress_primary),
+                ]
+                .spacing(4)
+            )
+            .padding(32)
+            .width(Length::FillPortion(4))
+            .style(theme::card_low);
 
-                repo_list = repo_list.push(repo_row);
+            // Active repos list
+            let mut repo_list = column![].spacing(12);
+            let colors = [theme::colors::TERTIARY, theme::colors::PRIMARY, theme::colors::SECONDARY];
+            for (i, rp) in progress.repos.iter().enumerate() {
+                let progress_val = match rp.status.as_str() {
+                    "complete" => 1.0,
+                    "cloning" => 0.5,
+                    _ => 0.0,
+                };
+                let color_idx = i % colors.len();
+                let bar_color = colors[color_idx];
+
+                let status_dot_color = match rp.status.as_str() {
+                    "complete" => theme::colors::SUCCESS,
+                    "failed" => theme::colors::ERROR,
+                    "cloning" => bar_color,
+                    _ => theme::colors::OUTLINE,
+                };
+
+                let status_text = match rp.status.as_str() {
+                    "complete" => "100%".to_string(),
+                    "cloning" => "In progress...".to_string(),
+                    "failed" => "Failed".to_string(),
+                    _ => "Queued".to_string(),
+                };
+
+                let error_display: Element<'_, Message> = if let Some(ref err) = rp.error {
+                    text(err.as_str())
+                        .size(10)
+                        .color(theme::colors::ERROR)
+                        .into()
+                } else {
+                    Space::with_height(0).into()
+                };
+
+                let bar_style = match color_idx {
+                    0 => theme::progress_tertiary as fn(&iced::Theme) -> progress_bar::Style,
+                    1 => theme::progress_primary,
+                    _ => theme::progress_secondary,
+                };
+
+                let repo_item = column![
+                    row![
+                        text("\u{25CF}").size(8).color(status_dot_color),
+                        text(&rp.repo_name)
+                            .size(13)
+                            .font(theme::FONT_MONO),
+                        Space::with_width(Length::Fill),
+                        text(status_text.clone())
+                            .size(11)
+                            .font(theme::FONT_MONO)
+                            .color(theme::colors::ON_SURFACE_VARIANT),
+                    ]
+                    .spacing(8)
+                    .align_y(Alignment::Center),
+                    progress_bar(0.0..=1.0, progress_val as f32)
+                        .height(4)
+                        .style(bar_style),
+                    error_display,
+                ]
+                .spacing(4);
+
+                repo_list = repo_list.push(repo_item);
             }
 
+            let repos_panel = container(
+                column![
+                    row![
+                        text("Active Repositories")
+                            .size(16)
+                            .font(theme::FONT_HEADLINE),
+                        Space::with_width(Length::Fill),
+                        container(
+                            text(format!("{} THREADS", self.backup_options.max_concurrent.unwrap_or(3)))
+                                .size(10)
+                                .font(theme::FONT_MONO)
+                                .color(theme::colors::SECONDARY)
+                        )
+                        .padding([4, 8])
+                        .style(theme::badge_style(theme::colors::SECONDARY)),
+                    ]
+                    .align_y(Alignment::Center),
+                    Space::with_height(16),
+                    repo_list,
+                ]
+            )
+            .padding(24)
+            .width(Length::FillPortion(8))
+            .style(theme::card);
+
+            let current = if let Some(ref repo) = progress.current_repo {
+                text(format!("Currently: {}", repo))
+                    .size(12)
+                    .font(theme::FONT_MONO)
+                    .color(theme::colors::ON_SURFACE_VARIANT)
+            } else if !progress.is_running {
+                text("Backup complete")
+                    .size(12)
+                    .font(theme::FONT_MONO)
+                    .color(theme::colors::SUCCESS)
+            } else {
+                text("Starting...")
+                    .size(12)
+                    .font(theme::FONT_MONO)
+                    .color(theme::colors::ON_SURFACE_VARIANT)
+            };
+
             column![
-                overall,
                 current,
-                Space::with_height(8),
-                repo_list,
+                Space::with_height(16),
+                row![pct_display, repos_panel].spacing(16),
             ]
-            .spacing(8)
+            .spacing(0)
             .into()
         } else {
             container(
                 column![
-                    text("No backup in progress").size(16),
-                    text("Configure options and start a backup to see progress here.").size(13),
+                    text("No backup in progress")
+                        .size(16)
+                        .font(theme::FONT_HEADLINE)
+                        .color(theme::colors::ON_SURFACE_VARIANT),
+                    text("Configure options and start a backup to see progress here.")
+                        .size(13)
+                        .color(theme::colors::OUTLINE),
                 ]
                 .spacing(8)
             )
@@ -341,8 +586,13 @@ impl GoshApp {
         if self.backup_history.is_empty() {
             return container(
                 column![
-                    text("No backup history").size(16),
-                    text("Completed backups will appear here.").size(13),
+                    text("No backup history")
+                        .size(16)
+                        .font(theme::FONT_HEADLINE)
+                        .color(theme::colors::ON_SURFACE_VARIANT),
+                    text("Completed backups will appear here.")
+                        .size(13)
+                        .color(theme::colors::OUTLINE),
                 ]
                 .spacing(8)
             )
@@ -352,49 +602,93 @@ impl GoshApp {
             .into();
         }
 
-        let mut list = column![].spacing(8);
+        // Table header
+        let table_head = container(
+            row![
+                text("STATUS").size(10).font(theme::FONT_MONO).color(theme::colors::OUTLINE).width(Length::FillPortion(1)),
+                text("TIMESTAMP").size(10).font(theme::FONT_MONO).color(theme::colors::OUTLINE).width(Length::FillPortion(3)),
+                text("REPOS").size(10).font(theme::FONT_MONO).color(theme::colors::OUTLINE).width(Length::FillPortion(1)),
+                text("DURATION").size(10).font(theme::FONT_MONO).color(theme::colors::OUTLINE).width(Length::FillPortion(2)),
+                text("").width(Length::FillPortion(1)),
+            ]
+            .spacing(8)
+            .padding([0, 24])
+        )
+        .padding([12, 0])
+        .width(Length::Fill)
+        .style(theme::table_header);
+
+        let mut rows = column![].spacing(0);
         for entry in &self.backup_history {
-            let status_icon = match entry.status.as_str() {
-                "complete" => "\u{2713}",
-                "partial" => "\u{26A0}",
-                "failed" => "\u{2717}",
-                _ => "\u{25CB}",
+            let status_color = match entry.status.as_str() {
+                "complete" => theme::colors::PRIMARY,
+                "partial" => theme::colors::SECONDARY,
+                _ => theme::colors::ERROR,
+            };
+            let status_label = match entry.status.as_str() {
+                "complete" => "Success",
+                "partial" => "Partial",
+                _ => "Error",
             };
 
             let duration_secs = entry.duration / 1000;
             let duration_str = format!("{}m {}s", duration_secs / 60, duration_secs % 60);
-
             let date_display = entry.date.split('T').next().unwrap_or(&entry.date);
 
             let entry_row = container(
                 row![
-                    column![
-                        row![
-                            text(status_icon).size(14),
-                            text(date_display).size(13),
-                            text(format!("| {} repos", entry.repo_count)).size(12),
-                            text(format!("| {}", duration_str)).size(12),
-                        ]
-                        .spacing(8)
-                        .align_y(Alignment::Center),
-                        text(&entry.destination).size(11),
+                    row![
+                        text("\u{25CF}").size(10).color(status_color),
+                        text(status_label).size(12).color(status_color),
                     ]
-                    .spacing(4),
-                    Space::with_width(Length::Fill),
-                    button(text("Open").size(12))
-                        .padding([6, 12])
-                        .style(button::secondary)
-                        .on_press(Message::BackupOpenFolder(entry.destination.clone())),
+                    .spacing(6)
+                    .align_y(Alignment::Center)
+                    .width(Length::FillPortion(1)),
+                    text(date_display)
+                        .size(12)
+                        .font(theme::FONT_MONO)
+                        .color(theme::colors::ON_SURFACE_VARIANT)
+                        .width(Length::FillPortion(3)),
+                    text(format!("{}", entry.repo_count))
+                        .size(12)
+                        .font(theme::FONT_MONO)
+                        .width(Length::FillPortion(1)),
+                    text(duration_str.clone())
+                        .size(12)
+                        .font(theme::FONT_MONO)
+                        .color(theme::colors::ON_SURFACE_VARIANT)
+                        .width(Length::FillPortion(2)),
+                    button(
+                        text("Open").size(11).font(theme::FONT_MONO)
+                    )
+                    .padding([4, 12])
+                    .style(theme::ghost_button)
+                    .on_press(Message::BackupOpenFolder(entry.destination.clone()))
+                    .width(Length::FillPortion(1)),
                 ]
+                .spacing(8)
                 .align_y(Alignment::Center)
+                .padding([0, 24])
             )
-            .padding(12)
-            .width(Length::Fill)
-            .style(container::bordered_box);
+            .padding([12, 0])
+            .width(Length::Fill);
 
-            list = list.push(entry_row);
+            rows = rows.push(entry_row);
         }
 
-        list.into()
+        container(
+            column![table_head, rows]
+        )
+        .width(Length::Fill)
+        .style(theme::card)
+        .into()
     }
+}
+
+fn section_label(label: &str) -> Element<'_, Message> {
+    text(label)
+        .size(10)
+        .font(theme::FONT_HEADLINE)
+        .color(iced::Color { a: 0.8, ..theme::colors::PRIMARY })
+        .into()
 }

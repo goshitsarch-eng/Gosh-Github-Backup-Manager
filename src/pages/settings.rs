@@ -1,29 +1,41 @@
 use crate::app::{GoshApp, Message};
+use crate::theme;
 use crate::types::AppTheme;
 use iced::widget::{button, column, container, row, scrollable, text, toggler, Space};
 use iced::{Alignment, Element, Length};
 
 impl GoshApp {
     pub fn view_settings(&self) -> Element<'_, Message> {
-        let header = text("Settings").size(24);
-        let subtitle = text("Manage your app preferences").size(13);
+        let header = column![
+            text("Settings")
+                .size(28)
+                .font(theme::FONT_HEADLINE),
+            text("Manage your app preferences and account.")
+                .size(13)
+                .color(theme::colors::ON_SURFACE_VARIANT),
+        ]
+        .spacing(8);
 
         // Theme section
-        let make_theme_btn = |label: String, theme: AppTheme, is_active: bool| -> Element<'static, Message> {
-            let btn = button(text(label).size(13))
-                .padding([8, 16])
-                .on_press(Message::ThemeChanged(theme));
+        let make_theme_btn = |label: String, app_theme: AppTheme, is_active: bool| -> Element<'static, Message> {
+            let btn = button(
+                text(label)
+                    .size(12)
+                    .font(theme::FONT_HEADLINE)
+            )
+            .padding([8, 20])
+            .on_press(Message::ThemeChanged(app_theme));
             if is_active {
-                btn.style(button::primary).into()
+                btn.style(theme::tab_active).into()
             } else {
-                btn.style(button::secondary).into()
+                btn.style(theme::tab_inactive).into()
             }
         };
 
         let ct = self.current_theme;
         let theme_section = container(
             column![
-                text("Appearance").size(15),
+                section_header("Appearance"),
                 row![
                     make_theme_btn("Light".to_string(), AppTheme::Light, ct == AppTheme::Light),
                     make_theme_btn("Dark".to_string(), AppTheme::Dark, ct == AppTheme::Dark),
@@ -31,121 +43,157 @@ impl GoshApp {
                 ]
                 .spacing(8),
             ]
-            .spacing(8)
+            .spacing(12)
         )
-        .padding(16)
+        .padding(20)
         .width(Length::Fill)
-        .style(container::bordered_box);
-
-        // Backup defaults section
-        let default_location = &self.settings.default_backup_location;
-        let backup_defaults = container(
-            column![
-                text("Backup Defaults").size(15),
-                row![
-                    text(if default_location.is_empty() {
-                        "No default location set"
-                    } else {
-                        default_location.as_str()
-                    })
-                    .size(12),
-                    Space::with_width(Length::Fill),
-                    button(text("Browse").size(12))
-                        .padding([6, 12])
-                        .on_press(Message::DefaultFolderSelect),
-                ]
-                .align_y(Alignment::Center),
-            ]
-            .spacing(8)
-        )
-        .padding(16)
-        .width(Length::Fill)
-        .style(container::bordered_box);
+        .style(theme::card);
 
         // Notifications
         let notif_section = container(
             column![
-                text("Notifications").size(15),
+                section_header("Notifications"),
                 toggler(self.settings.notifications)
                     .label("Enable notifications")
                     .on_toggle(Message::NotificationsChanged)
                     .text_size(13)
                     .size(20),
             ]
-            .spacing(8)
+            .spacing(12)
         )
-        .padding(16)
+        .padding(20)
         .width(Length::Fill)
-        .style(container::bordered_box);
+        .style(theme::card);
+
+        // Backup defaults
+        let default_location = &self.settings.default_backup_location;
+        let backup_defaults = container(
+            column![
+                section_header("Backup Defaults"),
+                row![
+                    text(if default_location.is_empty() {
+                        "No default location set"
+                    } else {
+                        default_location.as_str()
+                    })
+                    .size(12)
+                    .font(theme::FONT_MONO)
+                    .color(theme::colors::ON_SURFACE_VARIANT),
+                    Space::with_width(Length::Fill),
+                    button(
+                        text("Browse")
+                            .size(11)
+                            .font(theme::FONT_MONO)
+                    )
+                    .padding([6, 16])
+                    .style(theme::ghost_button)
+                    .on_press(Message::DefaultFolderSelect),
+                ]
+                .align_y(Alignment::Center),
+            ]
+            .spacing(12)
+        )
+        .padding(20)
+        .width(Length::Fill)
+        .style(theme::card);
 
         // Account section
         let account_section = container(
             column![
-                text("Account").size(15),
+                section_header("Account"),
                 if let Some(ref user) = self.user {
                     Element::from(
                         row![
-                            text(format!("Signed in as @{}", user.login)).size(13),
+                            column![
+                                text(format!("Signed in as @{}", user.login))
+                                    .size(13),
+                                text("Connected via Personal Access Token or OAuth")
+                                    .size(11)
+                                    .color(theme::colors::ON_SURFACE_VARIANT),
+                            ]
+                            .spacing(4),
                             Space::with_width(Length::Fill),
-                            button(text("Disconnect").size(12))
-                                .padding([6, 12])
-                                .style(button::danger)
-                                .on_press(Message::LogoutRequested),
+                            button(
+                                text("Disconnect")
+                                    .size(11)
+                                    .font(theme::FONT_HEADLINE)
+                            )
+                            .padding([8, 16])
+                            .style(theme::danger_button)
+                            .on_press(Message::LogoutRequested),
                         ]
                         .align_y(Alignment::Center)
                     )
                 } else {
-                    Element::from(text("Not signed in").size(13))
+                    Element::from(
+                        text("Not signed in")
+                            .size(13)
+                            .color(theme::colors::ON_SURFACE_VARIANT)
+                    )
                 },
             ]
-            .spacing(8)
+            .spacing(12)
         )
-        .padding(16)
+        .padding(20)
         .width(Length::Fill)
-        .style(container::bordered_box);
+        .style(theme::card);
 
         // Data management
         let data_section = container(
             column![
-                text("Data Management").size(15),
-                row![
-                    button(text("Clear Backup History").size(12))
-                        .padding([6, 12])
-                        .style(button::secondary)
-                        .on_press(Message::ClearBackupHistory),
-                ],
+                section_header("Data Management"),
+                button(
+                    text("Clear Backup History")
+                        .size(12)
+                        .font(theme::FONT_MONO)
+                )
+                .padding([8, 16])
+                .style(theme::ghost_button)
+                .on_press(Message::ClearBackupHistory),
             ]
-            .spacing(8)
+            .spacing(12)
         )
-        .padding(16)
+        .padding(20)
         .width(Length::Fill)
-        .style(container::bordered_box);
+        .style(theme::card);
 
         // Logout confirmation overlay
         let logout_overlay: Element<Message> = if self.logout_confirm_visible {
             container(
                 container(
                     column![
-                        text("Disconnect Account").size(18),
-                        text("Are you sure you want to disconnect? Your token will be removed.").size(13),
-                        Space::with_height(12),
+                        text("Disconnect Account")
+                            .size(18)
+                            .font(theme::FONT_HEADLINE),
+                        text("Are you sure you want to disconnect? Your token will be removed.")
+                            .size(13)
+                            .color(theme::colors::ON_SURFACE_VARIANT),
+                        Space::with_height(16),
                         row![
-                            button(text("Cancel").size(13))
-                                .padding([8, 16])
-                                .style(button::secondary)
-                                .on_press(Message::LogoutCancelled),
-                            button(text("Disconnect").size(13))
-                                .padding([8, 16])
-                                .style(button::danger)
-                                .on_press(Message::LogoutConfirmed),
+                            button(
+                                text("Cancel")
+                                    .size(12)
+                                    .font(theme::FONT_HEADLINE)
+                            )
+                            .padding([10, 20])
+                            .style(theme::ghost_button)
+                            .on_press(Message::LogoutCancelled),
+                            button(
+                                text("Disconnect")
+                                    .size(12)
+                                    .font(theme::FONT_HEADLINE)
+                            )
+                            .padding([10, 20])
+                            .style(theme::danger_button)
+                            .on_press(Message::LogoutConfirmed),
                         ]
                         .spacing(8),
                     ]
                     .spacing(8)
                 )
-                .padding(24)
-                .max_width(400)
-                .style(container::bordered_box)
+                .padding(28)
+                .max_width(420)
+                .style(theme::card)
             )
             .width(Length::Fill)
             .center_x(Length::Fill)
@@ -156,22 +204,32 @@ impl GoshApp {
 
         let content = column![
             header,
-            subtitle,
-            Space::with_height(16),
+            Space::with_height(24),
             logout_overlay,
             row![
-                column![theme_section, notif_section, data_section].spacing(12).width(Length::FillPortion(1)),
-                column![backup_defaults, account_section].spacing(12).width(Length::FillPortion(1)),
+                column![theme_section, notif_section, data_section]
+                    .spacing(16)
+                    .width(Length::FillPortion(1)),
+                column![backup_defaults, account_section]
+                    .spacing(16)
+                    .width(Length::FillPortion(1)),
             ]
-            .spacing(12),
-            Space::with_height(20),
+            .spacing(16),
+            Space::with_height(24),
         ]
-        .spacing(4)
-        .padding(24);
+        .spacing(0)
+        .padding(32);
 
         scrollable(content)
             .width(Length::Fill)
             .height(Length::Fill)
             .into()
     }
+}
+
+fn section_header(label: &str) -> Element<'_, Message> {
+    text(label)
+        .size(14)
+        .font(theme::FONT_HEADLINE)
+        .into()
 }

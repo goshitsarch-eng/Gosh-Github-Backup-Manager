@@ -7,8 +7,8 @@ use crate::theme;
 use crate::types::*;
 use crate::widgets::sidebar;
 
-use iced::widget::{container, row, text};
-use iced::{Element, Length, Subscription, Task, Theme};
+use iced::widget::{column, container, row, text, button, Space};
+use iced::{Alignment, Element, Length, Subscription, Task, Theme};
 use iced::futures::SinkExt;
 
 use std::collections::HashSet;
@@ -262,7 +262,7 @@ impl GoshApp {
     }
 
     pub fn theme(&self) -> Theme {
-        theme::get_theme(self.current_theme)
+        theme::gitsafe_theme()
     }
 
     pub fn subscription(&self) -> Subscription<Message> {
@@ -906,7 +906,17 @@ impl GoshApp {
     pub fn view(&self) -> Element<'_, Message> {
         if self.is_loading && !self.is_authenticated {
             return container(
-                text("Loading...").size(16)
+                column![
+                    text("GitHub Backup")
+                        .size(24)
+                        .font(theme::FONT_HEADLINE)
+                        .color(theme::colors::PRIMARY),
+                    text("Loading...")
+                        .size(13)
+                        .color(theme::colors::ON_SURFACE_VARIANT),
+                ]
+                .spacing(8)
+                .align_x(Alignment::Center)
             )
             .width(Length::Fill)
             .height(Length::Fill)
@@ -919,7 +929,23 @@ impl GoshApp {
             return self.view_auth();
         }
 
-        let sidebar = sidebar::view(self.current_page);
+        let sidebar = sidebar::view(self.current_page, self.is_authenticated, self.user.as_ref());
+
+        // Header bar
+        let header_bar = container(
+            row![
+                text("GitSafe Desktop")
+                    .size(14)
+                    .font(theme::FONT_HEADLINE_MEDIUM),
+            ]
+            .align_y(Alignment::Center)
+            .padding([0, 24])
+        )
+        .width(Length::Fill)
+        .height(48)
+        .center_y(48)
+        .style(theme::header);
+
         let content = match self.current_page {
             Page::Dashboard => self.view_dashboard(),
             Page::Repositories => self.view_repositories(),
@@ -929,7 +955,15 @@ impl GoshApp {
             Page::Auth => unreachable!(),
         };
 
-        row![sidebar, content].into()
+        let main_area = column![
+            header_bar,
+            content,
+        ]
+        .height(Length::Fill);
+
+        row![sidebar, main_area]
+            .height(Length::Fill)
+            .into()
     }
 }
 

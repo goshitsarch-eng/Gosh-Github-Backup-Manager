@@ -1,6 +1,6 @@
 use crate::app::{GoshApp, Message};
+use crate::theme;
 use crate::types::{GitHubRepo, Page, SortDirection, SortOption, VisibilityFilter};
-use crate::widgets::repo_card;
 use iced::widget::{button, checkbox, column, container, pick_list, row, scrollable, text, text_input, Space};
 use iced::{Alignment, Element, Length};
 
@@ -9,33 +9,68 @@ impl GoshApp {
         let filtered_repos = self.get_filtered_repos();
         let selected_count = self.selected_repos.len();
 
-        // Header
-        let header = row![
-            column![
-                text("Repositories").size(24),
-                text(format!("{} total, {} shown", self.repos.len(), filtered_repos.len())).size(13),
-            ]
-            .spacing(4),
-            Space::with_width(Length::Fill),
-            if selected_count > 0 {
-                Element::from(
-                    button(text(format!("Backup ({selected_count})")).size(13))
-                        .padding([10, 16])
-                        .style(button::primary)
-                        .on_press(Message::NavigateTo(Page::Backup))
-                )
-            } else {
-                Element::from(Space::with_width(0))
-            },
-        ]
-        .align_y(Alignment::Center);
+        // ---- Header Section ----
+        let header_left = {
+            container(
+                column![
+                    text("Repository Selection")
+                        .size(22)
+                        .font(theme::FONT_HEADLINE),
+                    text("Choose the repositories you wish to backup. Selected repositories will be backed up according to your settings.")
+                        .size(13)
+                        .color(theme::colors::ON_SURFACE_VARIANT),
+                    Space::with_height(16),
+                    row![
+                        stat_badge("TOTAL DETECTED", self.repos.len().to_string(), theme::colors::PRIMARY),
+                        stat_badge("SELECTED", selected_count.to_string(), theme::colors::TERTIARY),
+                    ]
+                    .spacing(32),
+                ]
+                .spacing(8)
+            )
+            .padding(24)
+            .width(Length::FillPortion(8))
+            .style(theme::card_low)
+        };
 
-        // Filters
-        let search = text_input("Search repositories...", &self.repo_search)
+        let header_right = container(
+            column![
+                text("\u{2728}")
+                    .size(20)
+                    .color(theme::colors::TERTIARY),
+                Space::with_height(8),
+                text("Smart Selection")
+                    .size(14)
+                    .font(theme::FONT_HEADLINE),
+                text("Automatically select all repositories pushed in the last 30 days.")
+                    .size(11)
+                    .color(theme::colors::ON_SURFACE_VARIANT),
+                Space::with_height(8),
+                button(
+                    text("SELECT ALL")
+                        .size(10)
+                        .font(theme::FONT_MONO)
+                        .color(theme::colors::PRIMARY)
+                )
+                .padding([6, 0])
+                .style(theme::ghost_button)
+                .on_press(Message::RepoSelectAll),
+            ]
+            .spacing(4)
+        )
+        .padding(24)
+        .width(Length::FillPortion(4))
+        .style(theme::card_highest);
+
+        let header_row = row![header_left, header_right].spacing(16);
+
+        // ---- Filter Bar ----
+        let search = text_input("Search repository name, tag, or owner...", &self.repo_search)
             .on_input(Message::RepoSearchChanged)
-            .padding(8)
+            .padding(10)
             .size(13)
-            .width(Length::FillPortion(2));
+            .style(theme::surface_input)
+            .width(Length::FillPortion(3));
 
         let visibility_options = vec![
             VisibilityFilter::All,
@@ -48,7 +83,30 @@ impl GoshApp {
             Message::RepoVisibilityFilterChanged,
         )
         .padding(8)
-        .text_size(13);
+        .text_size(12);
+
+        // Language filter
+        let mut languages: Vec<String> = self
+            .repos
+            .iter()
+            .filter_map(|r| r.language.clone())
+            .collect::<std::collections::HashSet<_>>()
+            .into_iter()
+            .collect();
+        languages.sort();
+        languages.insert(0, "All Languages".to_string());
+        let current_lang = if self.repo_language_filter.is_empty() {
+            Some("All Languages".to_string())
+        } else {
+            Some(self.repo_language_filter.clone())
+        };
+        let lang_picker = pick_list(
+            languages,
+            current_lang,
+            Message::RepoLanguageFilterChanged,
+        )
+        .padding(8)
+        .text_size(12);
 
         let sort_options = vec![
             SortOption::Name,
@@ -62,111 +120,105 @@ impl GoshApp {
             Message::RepoSortByChanged,
         )
         .padding(8)
-        .text_size(13);
+        .text_size(12);
 
         let sort_dir_label = match self.repo_sort_direction {
             SortDirection::Ascending => "\u{2191}",
             SortDirection::Descending => "\u{2193}",
         };
-        let sort_dir_btn = button(text(sort_dir_label).size(14))
+        let sort_dir_btn = button(text(sort_dir_label).size(13))
             .padding([8, 12])
+            .style(theme::ghost_button)
             .on_press(Message::RepoToggleSortDirection);
 
-        let filter_row = row![
-            search,
-            visibility_picker,
-            sort_picker,
-            sort_dir_btn,
-        ]
-        .spacing(8)
-        .align_y(Alignment::Center);
+        let select_all_btn = button(
+            text("Select All").size(10).font(theme::FONT_MONO)
+        )
+        .padding([6, 8])
+        .style(theme::ghost_button)
+        .on_press(Message::RepoSelectAll);
 
-        // Language filter
-        let mut languages: Vec<String> = self
-            .repos
-            .iter()
-            .filter_map(|r| r.language.clone())
-            .collect::<std::collections::HashSet<_>>()
-            .into_iter()
-            .collect();
-        languages.sort();
-        languages.insert(0, "All Languages".to_string());
+        let deselect_btn = button(
+            text("Deselect All").size(10).font(theme::FONT_MONO)
+        )
+        .padding([6, 8])
+        .style(theme::ghost_button)
+        .on_press(Message::RepoDeselectAll);
 
-        let current_lang = if self.repo_language_filter.is_empty() {
-            Some("All Languages".to_string())
+        let configure_btn = if selected_count > 0 {
+            Element::from(
+                button(
+                    text(format!("Configure Backup ({})", selected_count))
+                        .size(11)
+                        .font(theme::FONT_HEADLINE)
+                )
+                .padding([8, 16])
+                .style(theme::tertiary_button)
+                .on_press(Message::NavigateTo(Page::Backup))
+            )
         } else {
-            Some(self.repo_language_filter.clone())
+            Element::from(Space::with_width(0))
         };
 
-        let lang_picker = pick_list(
-            languages,
-            current_lang,
-            Message::RepoLanguageFilterChanged,
+        let filter_bar = container(
+            row![
+                search,
+                visibility_picker,
+                lang_picker,
+                sort_picker,
+                sort_dir_btn,
+                Space::with_width(Length::Fill),
+                select_all_btn,
+                deselect_btn,
+                configure_btn,
+            ]
+            .spacing(8)
+            .align_y(Alignment::Center)
         )
-        .padding(8)
-        .text_size(13);
+        .padding(16)
+        .width(Length::Fill)
+        .style(theme::card);
 
-        // Owner filter
-        let mut owners: Vec<String> = self
-            .repos
-            .iter()
-            .map(|r| r.owner.login.clone())
-            .collect::<std::collections::HashSet<_>>()
-            .into_iter()
-            .collect();
-        owners.sort();
-        owners.insert(0, "All Owners".to_string());
-
-        let current_owner = if self.repo_owner_filter.is_empty() {
-            Some("All Owners".to_string())
-        } else {
-            Some(self.repo_owner_filter.clone())
-        };
-
-        let owner_picker = pick_list(
-            owners,
-            current_owner,
-            Message::RepoOwnerFilterChanged,
+        // ---- Repository Table ----
+        let table_head = container(
+            row![
+                Space::with_width(40),
+                text("REPOSITORY NAME")
+                    .size(10).font(theme::FONT_MONO).color(theme::colors::ON_SURFACE_VARIANT)
+                    .width(Length::FillPortion(4)),
+                text("VISIBILITY")
+                    .size(10).font(theme::FONT_MONO).color(theme::colors::ON_SURFACE_VARIANT)
+                    .width(Length::FillPortion(2)),
+                text("LANGUAGE")
+                    .size(10).font(theme::FONT_MONO).color(theme::colors::ON_SURFACE_VARIANT)
+                    .width(Length::FillPortion(2)),
+                text("STARS")
+                    .size(10).font(theme::FONT_MONO).color(theme::colors::ON_SURFACE_VARIANT)
+                    .width(Length::FillPortion(1)),
+                text("SIZE")
+                    .size(10).font(theme::FONT_MONO).color(theme::colors::ON_SURFACE_VARIANT)
+                    .width(Length::FillPortion(1)),
+            ]
+            .spacing(8)
+            .align_y(Alignment::Center)
+            .padding([0, 24])
         )
-        .padding(8)
-        .text_size(13);
+        .padding([12, 0])
+        .width(Length::Fill)
+        .style(theme::table_header);
 
-        let filter_row2 = row![
-            owner_picker,
-            lang_picker,
-        ]
-        .spacing(8);
-
-        // Select all
-        let all_filtered_ids: Vec<i64> = filtered_repos.iter().map(|r| r.id).collect();
-        let all_selected = !all_filtered_ids.is_empty()
-            && all_filtered_ids.iter().all(|id| self.selected_repos.contains(id));
-
-        let select_all = checkbox(
-            format!("Select all ({})", filtered_repos.len()),
-            all_selected,
-        )
-        .on_toggle(move |checked| {
-            if checked {
-                Message::RepoSelectAll
-            } else {
-                Message::RepoDeselectAll
-            }
-        })
-        .size(16)
-        .text_size(13);
-
-        // Repo list
-        let mut repo_list = column![].spacing(8);
+        let mut table_rows = column![].spacing(0);
         for repo in &filtered_repos {
             let is_selected = self.selected_repos.contains(&repo.id);
-            repo_list = repo_list.push(repo_card::view(repo, is_selected));
+            table_rows = table_rows.push(repo_table_row(repo, is_selected));
         }
 
         if filtered_repos.is_empty() {
-            repo_list = repo_list.push(
+            table_rows = table_rows.push(
                 container(
-                    text("No repositories match your filters").size(14)
+                    text("No repositories match your filters")
+                        .size(13)
+                        .color(theme::colors::ON_SURFACE_VARIANT)
                 )
                 .padding(40)
                 .width(Length::Fill)
@@ -174,19 +226,34 @@ impl GoshApp {
             );
         }
 
+        // Footer
+        let footer = container(
+            text(format!("Showing {} of {} repositories", filtered_repos.len(), self.repos.len()))
+                .size(11)
+                .font(theme::FONT_MONO)
+                .color(theme::colors::OUTLINE)
+        )
+        .padding([12, 24])
+        .width(Length::Fill)
+        .style(theme::card_lowest);
+
+        let table = container(
+            column![table_head, table_rows, footer]
+        )
+        .width(Length::Fill)
+        .style(theme::card_low);
+
+        // ---- Full Layout ----
         let content = column![
-            header,
-            Space::with_height(12),
-            filter_row,
-            filter_row2,
-            Space::with_height(8),
-            select_all,
-            Space::with_height(8),
-            repo_list,
-            Space::with_height(20),
+            header_row,
+            Space::with_height(16),
+            filter_bar,
+            Space::with_height(16),
+            table,
+            Space::with_height(24),
         ]
-        .spacing(4)
-        .padding(24);
+        .spacing(0)
+        .padding(32);
 
         scrollable(content)
             .width(Length::Fill)
@@ -197,7 +264,6 @@ impl GoshApp {
     pub fn get_filtered_repos(&self) -> Vec<&GitHubRepo> {
         let mut repos: Vec<&GitHubRepo> = self.repos.iter().collect();
 
-        // Search filter
         if !self.repo_search.is_empty() {
             let search = self.repo_search.to_lowercase();
             repos.retain(|r| {
@@ -210,19 +276,16 @@ impl GoshApp {
             });
         }
 
-        // Owner filter
         if !self.repo_owner_filter.is_empty() {
             repos.retain(|r| r.owner.login == self.repo_owner_filter);
         }
 
-        // Visibility filter
         match self.repo_visibility_filter {
             VisibilityFilter::Public => repos.retain(|r| !r.private),
             VisibilityFilter::Private => repos.retain(|r| r.private),
             VisibilityFilter::All => {}
         }
 
-        // Language filter
         if !self.repo_language_filter.is_empty() {
             repos.retain(|r| {
                 r.language
@@ -232,7 +295,6 @@ impl GoshApp {
             });
         }
 
-        // Sort
         repos.sort_by(|a, b| {
             let cmp = match self.repo_sort_by {
                 SortOption::Name => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
@@ -248,4 +310,105 @@ impl GoshApp {
 
         repos
     }
+}
+
+fn stat_badge<'a>(label: &'a str, value: String, color: iced::Color) -> Element<'a, Message> {
+    column![
+        text(label)
+            .size(10)
+            .font(theme::FONT_MONO)
+            .color(theme::colors::OUTLINE),
+        text(value)
+            .size(18)
+            .font(theme::FONT_HEADLINE)
+            .color(color),
+    ]
+    .spacing(4)
+    .into()
+}
+
+fn repo_table_row<'a>(repo: &'a GitHubRepo, is_selected: bool) -> Element<'a, Message> {
+    let repo_id = repo.id;
+
+    // Visibility badge
+    let vis_badge = if repo.private {
+        container(
+            text("Private")
+                .size(10)
+                .font(theme::FONT_MONO)
+                .color(theme::colors::SECONDARY)
+        )
+        .padding([3, 8])
+        .style(theme::badge_style(theme::colors::SECONDARY))
+    } else {
+        container(
+            text("Public")
+                .size(10)
+                .font(theme::FONT_MONO)
+                .color(theme::colors::ON_SURFACE_VARIANT)
+        )
+        .padding([3, 8])
+        .style(theme::card_highest)
+    };
+
+    // Language with color dot
+    let lang_display: Element<'a, Message> = if let Some(ref lang) = repo.language {
+        let lang_color = theme::language_color(lang);
+        row![
+            text("\u{25CF}").size(10).color(lang_color),
+            text(lang.as_str()).size(11).color(theme::colors::ON_SURFACE_VARIANT),
+        ]
+        .spacing(6)
+        .align_y(Alignment::Center)
+        .into()
+    } else {
+        text("\u{2014}")
+            .size(11)
+            .color(theme::colors::OUTLINE_VARIANT)
+            .into()
+    };
+
+    // Size formatting
+    let size_str = if repo.size >= 1024 {
+        format!("{:.1} GB", repo.size as f64 / 1024.0)
+    } else {
+        format!("{} MB", repo.size)
+    };
+
+    container(
+        row![
+            checkbox("", is_selected)
+                .on_toggle(move |_| Message::RepoToggleSelection(repo_id))
+                .size(16),
+            column![
+                text(&repo.name)
+                    .size(13)
+                    .color(theme::colors::ON_SURFACE),
+                text(&repo.full_name)
+                    .size(10)
+                    .font(theme::FONT_MONO)
+                    .color(theme::colors::OUTLINE),
+            ]
+            .spacing(2)
+            .width(Length::FillPortion(4)),
+            container(vis_badge).width(Length::FillPortion(2)),
+            container(lang_display).width(Length::FillPortion(2)),
+            text(format!("\u{2605} {}", repo.stargazers_count))
+                .size(11)
+                .font(theme::FONT_MONO)
+                .color(theme::colors::ON_SURFACE_VARIANT)
+                .width(Length::FillPortion(1)),
+            text(size_str)
+                .size(11)
+                .font(theme::FONT_MONO)
+                .color(theme::colors::OUTLINE)
+                .width(Length::FillPortion(1)),
+        ]
+        .spacing(8)
+        .align_y(Alignment::Center)
+        .padding([0, 24])
+    )
+    .padding([12, 0])
+    .width(Length::Fill)
+    .into()
 }
