@@ -66,7 +66,7 @@ pub fn view(current_page: Page, is_authenticated: bool, user: Option<&GitHubUser
             .size(18)
             .font(theme::FONT_HEADLINE)
             .color(colors.primary),
-        text(if is_authenticated { "V2.0.0 \u{00B7} Connected" } else { "V2.0.0 \u{00B7} Not Connected" })
+        text(if is_authenticated { "V2.1.0 \u{00B7} Connected" } else { "V2.1.0 \u{00B7} Not Connected" })
             .size(10)
             .font(theme::FONT_MONO)
             .color(colors.outline),

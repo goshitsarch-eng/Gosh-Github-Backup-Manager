@@ -12,7 +12,7 @@ impl GoshApp {
                 text("Gosh GitHub Backup Manager")
                     .size(20)
                     .font(theme::FONT_HEADLINE),
-                text("Version 2.0.0")
+                text("Version 2.1.0")
                     .size(13)
                     .font(theme::FONT_MONO)
                     .color(c.primary),

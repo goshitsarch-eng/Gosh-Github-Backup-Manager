@@ -1,6 +1,6 @@
 [package]
 name = "gosh-github-backup-manager"
-version = "2.0.0"
+version = "2.1.0"
 description = "A cross-platform app to backup your GitHub repositories"
 authors = ["Gosh-Its-Arch"]
 license = "AGPL-3.0"
