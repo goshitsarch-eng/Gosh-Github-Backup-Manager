@@ -20,6 +20,8 @@ From the repository browser you can filter by language, visibility, or owner, th
 
 Settings are persisted between sessions — including your theme preference (dark, light, or system).
 
+For a full walkthrough, see the [User Manual](https://docs.goshapps.com/7/gosh-github-backup-manager).
+
 ## Installation
 
 ### From source
