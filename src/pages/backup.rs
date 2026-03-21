@@ -6,6 +6,7 @@ use iced::{Alignment, Element, Length};
 
 impl GoshApp {
     pub fn view_backup(&self) -> Element<'_, Message> {
+        let c = self.c();
         let selected_count = self.selected_repos.len();
 
         // Header
@@ -15,7 +16,7 @@ impl GoshApp {
                 .font(theme::FONT_HEADLINE),
             text("Configure the synchronization parameters for your local repository mirrors.")
                 .size(13)
-                .color(theme::colors::ON_SURFACE_VARIANT),
+                .color(c.on_surface_variant),
         ]
         .spacing(8);
 
@@ -63,11 +64,11 @@ impl GoshApp {
             let status_indicator = row![
                 text("\u{25CF}")
                     .size(8)
-                    .color(if self.is_backup_running { theme::colors::PRIMARY } else { theme::colors::SECONDARY }),
+                    .color(if self.is_backup_running { c.primary } else { c.secondary }),
                 text(if self.is_backup_running { "Backup in progress" } else { "System Idle - Ready for process" })
                     .size(11)
                     .font(theme::FONT_MONO)
-                    .color(theme::colors::ON_SURFACE_VARIANT),
+                    .color(c.on_surface_variant),
             ]
             .spacing(8)
             .align_y(Alignment::Center);
@@ -116,9 +117,9 @@ impl GoshApp {
             )
             .padding([24, 0])
             .width(Length::Fill)
-            .style(|_: &iced::Theme| iced::widget::container::Style {
+            .style(move |_: &iced::Theme| iced::widget::container::Style {
                 border: iced::Border {
-                    color: theme::colors::WHITE_5,
+                    color: c.border_subtle,
                     width: 1.0,
                     radius: 0.0.into(),
                 },
@@ -148,6 +149,8 @@ impl GoshApp {
     }
 
     fn view_backup_options(&self) -> Element<'_, Message> {
+        let c = self.c();
+
         // ---- Left Column (7/12) ----
 
         // Backup Mode Selection
@@ -159,10 +162,10 @@ impl GoshApp {
                     text("Full Clone")
                         .size(13)
                         .font(theme::FONT_HEADLINE)
-                        .color(if is_full { theme::colors::ON_SURFACE } else { theme::colors::ON_SURFACE_VARIANT }),
+                        .color(if is_full { c.on_surface } else { c.on_surface_variant }),
                     text("Downloads all branches and entire commit history.")
                         .size(11)
-                        .color(theme::colors::ON_SURFACE_VARIANT),
+                        .color(c.on_surface_variant),
                 ]
                 .spacing(6)
             )
@@ -176,10 +179,10 @@ impl GoshApp {
                     text("Mirror Clone")
                         .size(13)
                         .font(theme::FONT_HEADLINE)
-                        .color(if !is_full { theme::colors::ON_SURFACE } else { theme::colors::ON_SURFACE_VARIANT }),
+                        .color(if !is_full { c.on_surface } else { c.on_surface_variant }),
                     text("Exact remote mapping with refs/notes and server-side structure.")
                         .size(11)
-                        .color(theme::colors::ON_SURFACE_VARIANT),
+                        .color(c.on_surface_variant),
                 ]
                 .spacing(6)
             )
@@ -193,7 +196,7 @@ impl GoshApp {
             let mirror_card: Element<'_, Message> = mirror_btn.into();
 
             column![
-                section_label("BACKUP MODE"),
+                section_label("BACKUP MODE", c),
                 row![full_card, mirror_card].spacing(12),
             ]
             .spacing(12)
@@ -201,7 +204,7 @@ impl GoshApp {
 
         // Target Folder
         let dest_section = column![
-            section_label("TARGET FOLDER"),
+            section_label("TARGET FOLDER", c),
             text_input("Path to backup directory...", &self.backup_options.destination)
                 .padding(12)
                 .size(13)
@@ -223,12 +226,12 @@ impl GoshApp {
         let concurrent = self.backup_options.max_concurrent.unwrap_or(3) as f64;
         let perf_section = column![
             row![
-                section_label("PERFORMANCE"),
+                section_label("PERFORMANCE", c),
                 Space::with_width(Length::Fill),
                 text("CPU THREAD OPTIMIZATION")
                     .size(10)
                     .font(theme::FONT_MONO)
-                    .color(theme::colors::TERTIARY),
+                    .color(c.tertiary),
             ]
             .align_y(Alignment::End),
             container(
@@ -239,7 +242,7 @@ impl GoshApp {
                         text(format!("{}", concurrent as u8))
                             .size(13)
                             .font(theme::FONT_MONO)
-                            .color(theme::colors::PRIMARY),
+                            .color(c.primary),
                     ],
                     slider(1.0..=8.0, concurrent, |val| {
                         Message::BackupConcurrentChanged(val as u8)
@@ -250,12 +253,12 @@ impl GoshApp {
                         text("LOW IMPACT (1)")
                             .size(10)
                             .font(theme::FONT_MONO)
-                            .color(theme::colors::OUTLINE),
+                            .color(c.outline),
                         Space::with_width(Length::Fill),
                         text("AGGRESSIVE (8)")
                             .size(10)
                             .font(theme::FONT_MONO)
-                            .color(theme::colors::OUTLINE),
+                            .color(c.outline),
                     ],
                 ]
                 .spacing(8)
@@ -270,7 +273,7 @@ impl GoshApp {
         let include_archived = self.backup_options.include_archived.unwrap_or(false);
 
         let include_section = column![
-            section_label("INCLUDE"),
+            section_label("INCLUDE", c),
             toggler(include_forks)
                 .label("Include forked repositories")
                 .on_toggle(Message::BackupIncludeForksChanged)
@@ -303,7 +306,7 @@ impl GoshApp {
 
         let archive_section = container(
             column![
-                section_label("ARCHIVE OPTIONS"),
+                section_label("ARCHIVE OPTIONS", c),
                 Space::with_height(8),
                 row![
                     column![
@@ -312,7 +315,7 @@ impl GoshApp {
                             .font(theme::FONT_HEADLINE),
                         text("Compress repository after cloning")
                             .size(11)
-                            .color(theme::colors::ON_SURFACE_VARIANT),
+                            .color(c.on_surface_variant),
                     ]
                     .spacing(4)
                     .width(Length::Fill),
@@ -331,7 +334,7 @@ impl GoshApp {
                                 text(format!("Level {}", compression as u8))
                                     .size(11)
                                     .font(theme::FONT_MONO)
-                                    .color(theme::colors::TERTIARY),
+                                    .color(c.tertiary),
                             ],
                             slider(0.0..=9.0, compression, |val| {
                                 Message::BackupCompressionChanged(val as u8)
@@ -357,7 +360,7 @@ impl GoshApp {
                 row![
                     text("\u{24D8}")
                         .size(16)
-                        .color(theme::colors::TERTIARY),
+                        .color(c.tertiary),
                     text("Optimization Note")
                         .size(13)
                         .font(theme::FONT_HEADLINE_MEDIUM),
@@ -367,7 +370,7 @@ impl GoshApp {
                 Space::with_height(8),
                 text("Higher compression levels significantly increase CPU usage during the archival phase. We recommend Level 5 for most source code repositories.")
                     .size(11)
-                    .color(theme::colors::ON_SURFACE_VARIANT),
+                    .color(c.on_surface_variant),
             ]
         )
         .padding(20)
@@ -385,6 +388,8 @@ impl GoshApp {
     }
 
     fn view_backup_progress(&self) -> Element<'_, Message> {
+        let c = self.c();
+
         if let Some(ref progress) = self.backup_progress {
             let total = progress.total_repos as f32;
             let completed = (progress.completed_repos + progress.failed_repos) as f32;
@@ -409,17 +414,17 @@ impl GoshApp {
                     text("GLOBAL COMPLETION")
                         .size(10)
                         .font(theme::FONT_MONO)
-                        .color(theme::colors::PRIMARY),
+                        .color(c.primary),
                     text(format!("{:.0}%", pct * 100.0))
                         .size(56)
                         .font(theme::FONT_HEADLINE)
-                        .color(theme::colors::PRIMARY_CONTAINER),
+                        .color(c.primary_container),
                     Space::with_height(16),
                     row![
                         column![
                             text("Estimated Remaining")
                                 .size(11)
-                                .color(theme::colors::ON_SURFACE_VARIANT),
+                                .color(c.on_surface_variant),
                             text(remaining_str.clone())
                                 .size(18)
                                 .font(theme::FONT_MONO),
@@ -429,11 +434,11 @@ impl GoshApp {
                         column![
                             text("Elapsed")
                                 .size(11)
-                                .color(theme::colors::ON_SURFACE_VARIANT),
+                                .color(c.on_surface_variant),
                             text(elapsed_str.clone())
                                 .size(18)
                                 .font(theme::FONT_MONO)
-                                .color(theme::colors::SECONDARY),
+                                .color(c.secondary),
                         ]
                         .spacing(4),
                     ],
@@ -450,21 +455,21 @@ impl GoshApp {
 
             // Active repos list
             let mut repo_list = column![].spacing(12);
-            let colors = [theme::colors::TERTIARY, theme::colors::PRIMARY, theme::colors::SECONDARY];
+            let accent_colors = [c.tertiary, c.primary, c.secondary];
             for (i, rp) in progress.repos.iter().enumerate() {
                 let progress_val = match rp.status.as_str() {
                     "complete" => 1.0,
                     "cloning" => 0.5,
                     _ => 0.0,
                 };
-                let color_idx = i % colors.len();
-                let bar_color = colors[color_idx];
+                let color_idx = i % accent_colors.len();
+                let bar_color = accent_colors[color_idx];
 
                 let status_dot_color = match rp.status.as_str() {
-                    "complete" => theme::colors::SUCCESS,
-                    "failed" => theme::colors::ERROR,
+                    "complete" => c.success,
+                    "failed" => c.error,
                     "cloning" => bar_color,
-                    _ => theme::colors::OUTLINE,
+                    _ => c.outline,
                 };
 
                 let status_text = match rp.status.as_str() {
@@ -477,7 +482,7 @@ impl GoshApp {
                 let error_display: Element<'_, Message> = if let Some(ref err) = rp.error {
                     text(err.as_str())
                         .size(10)
-                        .color(theme::colors::ERROR)
+                        .color(c.error)
                         .into()
                 } else {
                     Space::with_height(0).into()
@@ -499,7 +504,7 @@ impl GoshApp {
                         text(status_text.clone())
                             .size(11)
                             .font(theme::FONT_MONO)
-                            .color(theme::colors::ON_SURFACE_VARIANT),
+                            .color(c.on_surface_variant),
                     ]
                     .spacing(8)
                     .align_y(Alignment::Center),
@@ -524,10 +529,10 @@ impl GoshApp {
                             text(format!("{} THREADS", self.backup_options.max_concurrent.unwrap_or(3)))
                                 .size(10)
                                 .font(theme::FONT_MONO)
-                                .color(theme::colors::SECONDARY)
+                                .color(c.secondary)
                         )
                         .padding([4, 8])
-                        .style(theme::badge_style(theme::colors::SECONDARY)),
+                        .style(theme::badge_style(c.secondary)),
                     ]
                     .align_y(Alignment::Center),
                     Space::with_height(16),
@@ -542,17 +547,17 @@ impl GoshApp {
                 text(format!("Currently: {}", repo))
                     .size(12)
                     .font(theme::FONT_MONO)
-                    .color(theme::colors::ON_SURFACE_VARIANT)
+                    .color(c.on_surface_variant)
             } else if !progress.is_running {
                 text("Backup complete")
                     .size(12)
                     .font(theme::FONT_MONO)
-                    .color(theme::colors::SUCCESS)
+                    .color(c.success)
             } else {
                 text("Starting...")
                     .size(12)
                     .font(theme::FONT_MONO)
-                    .color(theme::colors::ON_SURFACE_VARIANT)
+                    .color(c.on_surface_variant)
             };
 
             column![
@@ -568,10 +573,10 @@ impl GoshApp {
                     text("No backup in progress")
                         .size(16)
                         .font(theme::FONT_HEADLINE)
-                        .color(theme::colors::ON_SURFACE_VARIANT),
+                        .color(c.on_surface_variant),
                     text("Configure options and start a backup to see progress here.")
                         .size(13)
-                        .color(theme::colors::OUTLINE),
+                        .color(c.outline),
                 ]
                 .spacing(8)
             )
@@ -583,16 +588,18 @@ impl GoshApp {
     }
 
     fn view_backup_history(&self) -> Element<'_, Message> {
+        let c = self.c();
+
         if self.backup_history.is_empty() {
             return container(
                 column![
                     text("No backup history")
                         .size(16)
                         .font(theme::FONT_HEADLINE)
-                        .color(theme::colors::ON_SURFACE_VARIANT),
+                        .color(c.on_surface_variant),
                     text("Completed backups will appear here.")
                         .size(13)
-                        .color(theme::colors::OUTLINE),
+                        .color(c.outline),
                 ]
                 .spacing(8)
             )
@@ -605,10 +612,10 @@ impl GoshApp {
         // Table header
         let table_head = container(
             row![
-                text("STATUS").size(10).font(theme::FONT_MONO).color(theme::colors::OUTLINE).width(Length::FillPortion(1)),
-                text("TIMESTAMP").size(10).font(theme::FONT_MONO).color(theme::colors::OUTLINE).width(Length::FillPortion(3)),
-                text("REPOS").size(10).font(theme::FONT_MONO).color(theme::colors::OUTLINE).width(Length::FillPortion(1)),
-                text("DURATION").size(10).font(theme::FONT_MONO).color(theme::colors::OUTLINE).width(Length::FillPortion(2)),
+                text("STATUS").size(10).font(theme::FONT_MONO).color(c.outline).width(Length::FillPortion(1)),
+                text("TIMESTAMP").size(10).font(theme::FONT_MONO).color(c.outline).width(Length::FillPortion(3)),
+                text("REPOS").size(10).font(theme::FONT_MONO).color(c.outline).width(Length::FillPortion(1)),
+                text("DURATION").size(10).font(theme::FONT_MONO).color(c.outline).width(Length::FillPortion(2)),
                 text("").width(Length::FillPortion(1)),
             ]
             .spacing(8)
@@ -621,9 +628,9 @@ impl GoshApp {
         let mut rows = column![].spacing(0);
         for entry in &self.backup_history {
             let status_color = match entry.status.as_str() {
-                "complete" => theme::colors::PRIMARY,
-                "partial" => theme::colors::SECONDARY,
-                _ => theme::colors::ERROR,
+                "complete" => c.primary,
+                "partial" => c.secondary,
+                _ => c.error,
             };
             let status_label = match entry.status.as_str() {
                 "complete" => "Success",
@@ -647,7 +654,7 @@ impl GoshApp {
                     text(date_display)
                         .size(12)
                         .font(theme::FONT_MONO)
-                        .color(theme::colors::ON_SURFACE_VARIANT)
+                        .color(c.on_surface_variant)
                         .width(Length::FillPortion(3)),
                     text(format!("{}", entry.repo_count))
                         .size(12)
@@ -656,7 +663,7 @@ impl GoshApp {
                     text(duration_str.clone())
                         .size(12)
                         .font(theme::FONT_MONO)
-                        .color(theme::colors::ON_SURFACE_VARIANT)
+                        .color(c.on_surface_variant)
                         .width(Length::FillPortion(2)),
                     button(
                         text("Open").size(11).font(theme::FONT_MONO)
@@ -685,10 +692,10 @@ impl GoshApp {
     }
 }
 
-fn section_label(label: &str) -> Element<'_, Message> {
+fn section_label(label: &str, c: theme::Scheme) -> Element<'_, Message> {
     text(label)
         .size(10)
         .font(theme::FONT_HEADLINE)
-        .color(iced::Color { a: 0.8, ..theme::colors::PRIMARY })
+        .color(iced::Color { a: 0.8, ..c.primary })
         .into()
 }

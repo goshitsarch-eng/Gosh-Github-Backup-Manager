@@ -6,8 +6,10 @@ use iced::{Alignment, Element, Length};
 
 impl GoshApp {
     pub fn view_auth(&self) -> Element<'_, Message> {
+        let c = self.c();
+
         let accent = container(Space::new(3, Length::Fill))
-            .style(theme::accent_bar(theme::colors::TERTIARY));
+            .style(theme::accent_bar(c.tertiary));
 
         let title = text("Connect to GitHub")
             .size(28)
@@ -15,7 +17,7 @@ impl GoshApp {
 
         let subtitle = text("Link your account to enable automated backups and repository synchronization.")
             .size(13)
-            .color(theme::colors::ON_SURFACE_VARIANT);
+            .color(c.on_surface_variant);
 
         // Auth method tabs (segmented control)
         let token_tab = {
@@ -89,16 +91,16 @@ impl GoshApp {
             row![
                 text("\u{25CF}")
                     .size(8)
-                    .color(if self.is_authenticated { theme::colors::SUCCESS } else { theme::colors::ERROR }),
+                    .color(if self.is_authenticated { c.success } else { c.error }),
                 text(if self.is_authenticated { "Connected" } else { "Daemon Offline" })
                     .size(10)
                     .font(theme::FONT_MONO)
-                    .color(theme::colors::OUTLINE),
+                    .color(c.outline),
                 Space::with_width(Length::Fill),
                 text("iced-v0.13")
                     .size(10)
                     .font(theme::FONT_MONO)
-                    .color(theme::colors::OUTLINE_VARIANT),
+                    .color(c.outline_variant),
             ]
             .spacing(6)
             .align_y(Alignment::Center)
@@ -125,10 +127,12 @@ impl GoshApp {
     }
 
     fn view_auth_token(&self) -> Element<'_, Message> {
+        let c = self.c();
+
         let token_label = text("ACCESS TOKEN")
             .size(10)
             .font(theme::FONT_MONO)
-            .color(theme::colors::OUTLINE);
+            .color(c.outline);
 
         let token_input = text_input("ghp_xxxxxxxxxxxx", &self.token_input)
             .on_input(Message::TokenInputChanged)
@@ -159,7 +163,7 @@ impl GoshApp {
         let error_text: Element<'_, Message> = if let Some(ref status) = self.auth_status {
             text(status.as_str())
                 .size(12)
-                .color(theme::colors::ERROR)
+                .color(c.error)
                 .into()
         } else {
             Space::with_height(0).into()
@@ -171,12 +175,12 @@ impl GoshApp {
                 text("REQUIRED SCOPES")
                     .size(10)
                     .font(theme::FONT_MONO)
-                    .color(theme::colors::OUTLINE),
+                    .color(c.outline),
                 Space::with_height(8),
                 row![
-                    scope_item("repo"),
-                    scope_item("read:user"),
-                    scope_item("read:org"),
+                    scope_item("repo", c),
+                    scope_item("read:user", c),
+                    scope_item("read:org", c),
                 ]
                 .spacing(16),
             ]
@@ -188,7 +192,7 @@ impl GoshApp {
         let create_token_btn = button(
             row![
                 text("Create a new token on GitHub").size(12),
-                text("\u{2197}").size(12).color(theme::colors::PRIMARY),
+                text("\u{2197}").size(12).color(c.primary),
             ]
             .spacing(8)
         )
@@ -215,13 +219,15 @@ impl GoshApp {
     }
 
     fn view_auth_oauth(&self) -> Element<'_, Message> {
+        let c = self.c();
+
         match &self.oauth_status {
             OAuthStatus::Idle => {
                 let description = text(
                     "Sign in through your browser using GitHub Device Flow. No token needed.",
                 )
                 .size(13)
-                .color(theme::colors::ON_SURFACE_VARIANT);
+                .color(c.on_surface_variant);
 
                 let sign_in_btn = button(
                     row![
@@ -245,7 +251,7 @@ impl GoshApp {
                 column![
                     text("Connecting to GitHub...")
                         .size(14)
-                        .color(theme::colors::ON_SURFACE_VARIANT),
+                        .color(c.on_surface_variant),
                 ]
                 .spacing(8)
                 .into()
@@ -264,14 +270,14 @@ impl GoshApp {
                 let code_label = text("DEVICE CODE")
                     .size(10)
                     .font(theme::FONT_MONO)
-                    .color(theme::colors::OUTLINE);
+                    .color(c.outline);
 
                 // Large code display
                 let code_display = container(
                     text(user_code.as_str())
                         .size(28)
                         .font(theme::FONT_MONO)
-                        .color(theme::colors::ON_SURFACE)
+                        .color(c.on_surface)
                 )
                 .padding([20, 32])
                 .width(Length::Fill)
@@ -281,19 +287,19 @@ impl GoshApp {
                 // Info box
                 let info_box = {
                     let accent = container(Space::new(2, Length::Fill))
-                        .style(theme::accent_bar(theme::colors::TERTIARY));
+                        .style(theme::accent_bar(c.tertiary));
 
                     let info_content = container(
                         row![
                             text("\u{24D8}")
                                 .size(16)
-                                .color(theme::colors::TERTIARY),
+                                .color(c.tertiary),
                             text(format!(
                                 "This code will expire in {:02}:{:02}. Make sure you are signed into the correct GitHub account.",
                                 mins, secs
                             ))
                             .size(11)
-                            .color(theme::colors::ON_SURFACE_VARIANT),
+                            .color(c.on_surface_variant),
                         ]
                         .spacing(12)
                         .align_y(Alignment::Start)
@@ -347,7 +353,7 @@ impl GoshApp {
             OAuthStatus::Error(msg) => {
                 let error = text(msg.as_str())
                     .size(13)
-                    .color(theme::colors::ERROR);
+                    .color(c.error);
 
                 let retry_btn = button(
                     text("Try Again")
@@ -367,15 +373,15 @@ impl GoshApp {
     }
 }
 
-fn scope_item(scope: &str) -> Element<'_, Message> {
+fn scope_item(scope: &str, c: theme::Scheme) -> Element<'_, Message> {
     row![
         text("\u{2713}")
             .size(12)
-            .color(theme::colors::TERTIARY),
+            .color(c.tertiary),
         text(scope)
             .size(11)
             .font(theme::FONT_MONO)
-            .color(theme::colors::ON_SURFACE),
+            .color(c.on_surface),
     ]
     .spacing(6)
     .align_y(Alignment::Center)

@@ -262,7 +262,11 @@ impl GoshApp {
     }
 
     pub fn theme(&self) -> Theme {
-        theme::gitsafe_theme()
+        theme::gitsafe_theme(self.current_theme)
+    }
+
+    pub fn c(&self) -> theme::Scheme {
+        theme::scheme(self.current_theme)
     }
 
     pub fn subscription(&self) -> Subscription<Message> {
@@ -904,16 +908,18 @@ impl GoshApp {
     }
 
     pub fn view(&self) -> Element<'_, Message> {
+        let c = self.c();
+
         if self.is_loading && !self.is_authenticated {
             return container(
                 column![
                     text("GitHub Backup")
                         .size(24)
                         .font(theme::FONT_HEADLINE)
-                        .color(theme::colors::PRIMARY),
+                        .color(c.primary),
                     text("Loading...")
                         .size(13)
-                        .color(theme::colors::ON_SURFACE_VARIANT),
+                        .color(c.on_surface_variant),
                 ]
                 .spacing(8)
                 .align_x(Alignment::Center)
@@ -929,7 +935,7 @@ impl GoshApp {
             return self.view_auth();
         }
 
-        let sidebar = sidebar::view(self.current_page, self.is_authenticated, self.user.as_ref());
+        let sidebar = sidebar::view(self.current_page, self.is_authenticated, self.user.as_ref(), c);
 
         // Header bar
         let header_bar = container(

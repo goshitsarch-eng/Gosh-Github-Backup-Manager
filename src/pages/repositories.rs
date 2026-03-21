@@ -6,6 +6,7 @@ use iced::{Alignment, Element, Length};
 
 impl GoshApp {
     pub fn view_repositories(&self) -> Element<'_, Message> {
+        let c = self.c();
         let filtered_repos = self.get_filtered_repos();
         let selected_count = self.selected_repos.len();
 
@@ -18,11 +19,11 @@ impl GoshApp {
                         .font(theme::FONT_HEADLINE),
                     text("Choose the repositories you wish to backup. Selected repositories will be backed up according to your settings.")
                         .size(13)
-                        .color(theme::colors::ON_SURFACE_VARIANT),
+                        .color(c.on_surface_variant),
                     Space::with_height(16),
                     row![
-                        stat_badge("TOTAL DETECTED", self.repos.len().to_string(), theme::colors::PRIMARY),
-                        stat_badge("SELECTED", selected_count.to_string(), theme::colors::TERTIARY),
+                        stat_badge("TOTAL DETECTED", self.repos.len().to_string(), c.primary, c),
+                        stat_badge("SELECTED", selected_count.to_string(), c.tertiary, c),
                     ]
                     .spacing(32),
                 ]
@@ -37,20 +38,20 @@ impl GoshApp {
             column![
                 text("\u{2728}")
                     .size(20)
-                    .color(theme::colors::TERTIARY),
+                    .color(c.tertiary),
                 Space::with_height(8),
                 text("Smart Selection")
                     .size(14)
                     .font(theme::FONT_HEADLINE),
                 text("Automatically select all repositories pushed in the last 30 days.")
                     .size(11)
-                    .color(theme::colors::ON_SURFACE_VARIANT),
+                    .color(c.on_surface_variant),
                 Space::with_height(8),
                 button(
                     text("SELECT ALL")
                         .size(10)
                         .font(theme::FONT_MONO)
-                        .color(theme::colors::PRIMARY)
+                        .color(c.primary)
                 )
                 .padding([6, 0])
                 .style(theme::ghost_button)
@@ -184,19 +185,19 @@ impl GoshApp {
             row![
                 Space::with_width(40),
                 text("REPOSITORY NAME")
-                    .size(10).font(theme::FONT_MONO).color(theme::colors::ON_SURFACE_VARIANT)
+                    .size(10).font(theme::FONT_MONO).color(c.on_surface_variant)
                     .width(Length::FillPortion(4)),
                 text("VISIBILITY")
-                    .size(10).font(theme::FONT_MONO).color(theme::colors::ON_SURFACE_VARIANT)
+                    .size(10).font(theme::FONT_MONO).color(c.on_surface_variant)
                     .width(Length::FillPortion(2)),
                 text("LANGUAGE")
-                    .size(10).font(theme::FONT_MONO).color(theme::colors::ON_SURFACE_VARIANT)
+                    .size(10).font(theme::FONT_MONO).color(c.on_surface_variant)
                     .width(Length::FillPortion(2)),
                 text("STARS")
-                    .size(10).font(theme::FONT_MONO).color(theme::colors::ON_SURFACE_VARIANT)
+                    .size(10).font(theme::FONT_MONO).color(c.on_surface_variant)
                     .width(Length::FillPortion(1)),
                 text("SIZE")
-                    .size(10).font(theme::FONT_MONO).color(theme::colors::ON_SURFACE_VARIANT)
+                    .size(10).font(theme::FONT_MONO).color(c.on_surface_variant)
                     .width(Length::FillPortion(1)),
             ]
             .spacing(8)
@@ -210,7 +211,7 @@ impl GoshApp {
         let mut table_rows = column![].spacing(0);
         for repo in &filtered_repos {
             let is_selected = self.selected_repos.contains(&repo.id);
-            table_rows = table_rows.push(repo_table_row(repo, is_selected));
+            table_rows = table_rows.push(repo_table_row(repo, is_selected, c));
         }
 
         if filtered_repos.is_empty() {
@@ -218,7 +219,7 @@ impl GoshApp {
                 container(
                     text("No repositories match your filters")
                         .size(13)
-                        .color(theme::colors::ON_SURFACE_VARIANT)
+                        .color(c.on_surface_variant)
                 )
                 .padding(40)
                 .width(Length::Fill)
@@ -231,7 +232,7 @@ impl GoshApp {
             text(format!("Showing {} of {} repositories", filtered_repos.len(), self.repos.len()))
                 .size(11)
                 .font(theme::FONT_MONO)
-                .color(theme::colors::OUTLINE)
+                .color(c.outline)
         )
         .padding([12, 24])
         .width(Length::Fill)
@@ -312,12 +313,12 @@ impl GoshApp {
     }
 }
 
-fn stat_badge<'a>(label: &'a str, value: String, color: iced::Color) -> Element<'a, Message> {
+fn stat_badge<'a>(label: &'a str, value: String, color: iced::Color, c: theme::Scheme) -> Element<'a, Message> {
     column![
         text(label)
             .size(10)
             .font(theme::FONT_MONO)
-            .color(theme::colors::OUTLINE),
+            .color(c.outline),
         text(value)
             .size(18)
             .font(theme::FONT_HEADLINE)
@@ -327,7 +328,7 @@ fn stat_badge<'a>(label: &'a str, value: String, color: iced::Color) -> Element<
     .into()
 }
 
-fn repo_table_row<'a>(repo: &'a GitHubRepo, is_selected: bool) -> Element<'a, Message> {
+fn repo_table_row<'a>(repo: &'a GitHubRepo, is_selected: bool, c: theme::Scheme) -> Element<'a, Message> {
     let repo_id = repo.id;
 
     // Visibility badge
@@ -336,16 +337,16 @@ fn repo_table_row<'a>(repo: &'a GitHubRepo, is_selected: bool) -> Element<'a, Me
             text("Private")
                 .size(10)
                 .font(theme::FONT_MONO)
-                .color(theme::colors::SECONDARY)
+                .color(c.secondary)
         )
         .padding([3, 8])
-        .style(theme::badge_style(theme::colors::SECONDARY))
+        .style(theme::badge_style(c.secondary))
     } else {
         container(
             text("Public")
                 .size(10)
                 .font(theme::FONT_MONO)
-                .color(theme::colors::ON_SURFACE_VARIANT)
+                .color(c.on_surface_variant)
         )
         .padding([3, 8])
         .style(theme::card_highest)
@@ -356,7 +357,7 @@ fn repo_table_row<'a>(repo: &'a GitHubRepo, is_selected: bool) -> Element<'a, Me
         let lang_color = theme::language_color(lang);
         row![
             text("\u{25CF}").size(10).color(lang_color),
-            text(lang.as_str()).size(11).color(theme::colors::ON_SURFACE_VARIANT),
+            text(lang.as_str()).size(11).color(c.on_surface_variant),
         ]
         .spacing(6)
         .align_y(Alignment::Center)
@@ -364,7 +365,7 @@ fn repo_table_row<'a>(repo: &'a GitHubRepo, is_selected: bool) -> Element<'a, Me
     } else {
         text("\u{2014}")
             .size(11)
-            .color(theme::colors::OUTLINE_VARIANT)
+            .color(c.outline_variant)
             .into()
     };
 
@@ -383,11 +384,11 @@ fn repo_table_row<'a>(repo: &'a GitHubRepo, is_selected: bool) -> Element<'a, Me
             column![
                 text(&repo.name)
                     .size(13)
-                    .color(theme::colors::ON_SURFACE),
+                    .color(c.on_surface),
                 text(&repo.full_name)
                     .size(10)
                     .font(theme::FONT_MONO)
-                    .color(theme::colors::OUTLINE),
+                    .color(c.outline),
             ]
             .spacing(2)
             .width(Length::FillPortion(4)),
@@ -396,12 +397,12 @@ fn repo_table_row<'a>(repo: &'a GitHubRepo, is_selected: bool) -> Element<'a, Me
             text(format!("\u{2605} {}", repo.stargazers_count))
                 .size(11)
                 .font(theme::FONT_MONO)
-                .color(theme::colors::ON_SURFACE_VARIANT)
+                .color(c.on_surface_variant)
                 .width(Length::FillPortion(1)),
             text(size_str)
                 .size(11)
                 .font(theme::FONT_MONO)
-                .color(theme::colors::OUTLINE)
+                .color(c.outline)
                 .width(Length::FillPortion(1)),
         ]
         .spacing(8)

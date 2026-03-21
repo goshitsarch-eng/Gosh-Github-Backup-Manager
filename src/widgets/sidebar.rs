@@ -4,7 +4,7 @@ use crate::types::{GitHubUser, Page};
 use iced::widget::{button, column, container, row, text, Space};
 use iced::{Alignment, Element, Length};
 
-fn nav_item(label: &str, page: Page, current: Page, is_locked: bool) -> Element<'static, Message> {
+fn nav_item(label: &str, page: Page, current: Page, is_locked: bool, colors: theme::Scheme) -> Element<'static, Message> {
     let is_active = page == current;
 
     if is_locked {
@@ -12,11 +12,11 @@ fn nav_item(label: &str, page: Page, current: Page, is_locked: bool) -> Element<
         let content = row![
             text(label.to_string())
                 .size(13)
-                .color(iced::Color { a: 0.35, ..theme::colors::ON_SURFACE_VARIANT }),
+                .color(iced::Color { a: 0.35, ..colors.on_surface_variant }),
             Space::with_width(Length::Fill),
             text("\u{1F512}")
                 .size(10)
-                .color(iced::Color { a: 0.3, ..theme::colors::ON_SURFACE_VARIANT }),
+                .color(iced::Color { a: 0.3, ..colors.on_surface_variant }),
         ]
         .align_y(Alignment::Center)
         .padding([0, 16]);
@@ -30,12 +30,12 @@ fn nav_item(label: &str, page: Page, current: Page, is_locked: bool) -> Element<
     if is_active {
         // Active nav item with tertiary accent bar
         let accent = container(Space::new(3, Length::Fill))
-            .style(theme::accent_bar(theme::colors::TERTIARY));
+            .style(theme::accent_bar(colors.tertiary));
 
         let btn_content = button(
             text(label.to_string())
                 .size(13)
-                .color(theme::colors::PRIMARY)
+                .color(colors.primary)
         )
         .width(Length::Fill)
         .padding([10, 16])
@@ -59,17 +59,17 @@ fn nav_item(label: &str, page: Page, current: Page, is_locked: bool) -> Element<
     }
 }
 
-pub fn view(current_page: Page, is_authenticated: bool, user: Option<&GitHubUser>) -> Element<'static, Message> {
+pub fn view(current_page: Page, is_authenticated: bool, user: Option<&GitHubUser>, colors: theme::Scheme) -> Element<'static, Message> {
     // Branding
     let branding = column![
         text("GitHub Backup")
             .size(18)
             .font(theme::FONT_HEADLINE)
-            .color(theme::colors::PRIMARY),
+            .color(colors.primary),
         text(if is_authenticated { "V2.0.0 \u{00B7} Connected" } else { "V2.0.0 \u{00B7} Not Connected" })
             .size(10)
             .font(theme::FONT_MONO)
-            .color(theme::colors::OUTLINE),
+            .color(colors.outline),
     ]
     .spacing(4);
 
@@ -78,10 +78,10 @@ pub fn view(current_page: Page, is_authenticated: bool, user: Option<&GitHubUser
 
     // Navigation
     let nav = column![
-        nav_item("Dashboard", Page::Dashboard, current_page, !is_authenticated),
-        nav_item("Repositories", Page::Repositories, current_page, !is_authenticated),
-        nav_item("Backup", Page::Backup, current_page, !is_authenticated),
-        nav_item("Settings", Page::Settings, current_page, false),
+        nav_item("Dashboard", Page::Dashboard, current_page, !is_authenticated, colors),
+        nav_item("Repositories", Page::Repositories, current_page, !is_authenticated, colors),
+        nav_item("Backup", Page::Backup, current_page, !is_authenticated, colors),
+        nav_item("Settings", Page::Settings, current_page, false, colors),
     ]
     .spacing(2);
 
@@ -128,7 +128,7 @@ pub fn view(current_page: Page, is_authenticated: bool, user: Option<&GitHubUser
                 container(
                     text(initials)
                         .size(13)
-                        .color(theme::colors::ON_SURFACE)
+                        .color(colors.on_surface)
                 )
                 .width(32)
                 .height(32)
@@ -138,7 +138,7 @@ pub fn view(current_page: Page, is_authenticated: bool, user: Option<&GitHubUser
                 column![
                     text(login)
                         .size(12)
-                        .color(theme::colors::ON_SURFACE),
+                        .color(colors.on_surface),
                 ]
                 .spacing(2),
             ]
@@ -147,9 +147,9 @@ pub fn view(current_page: Page, is_authenticated: bool, user: Option<&GitHubUser
         )
         .padding([12, 20])
         .width(Length::Fill)
-        .style(|_theme: &iced::Theme| iced::widget::container::Style {
+        .style(move |_theme: &iced::Theme| iced::widget::container::Style {
             border: iced::Border {
-                color: theme::colors::WHITE_5,
+                color: colors.border_subtle,
                 width: 1.0,
                 radius: 0.0.into(),
             },

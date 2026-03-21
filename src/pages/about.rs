@@ -5,6 +5,8 @@ use iced::{Alignment, Element, Length};
 
 impl GoshApp {
     pub fn view_about(&self) -> Element<'_, Message> {
+        let c = self.c();
+
         let app_info = container(
             column![
                 text("Gosh GitHub Backup Manager")
@@ -13,20 +15,20 @@ impl GoshApp {
                 text("Version 2.0.0")
                     .size(13)
                     .font(theme::FONT_MONO)
-                    .color(theme::colors::PRIMARY),
+                    .color(c.primary),
                 Space::with_height(12),
                 text("A cross-platform desktop application for backing up your GitHub repositories to local storage.")
                     .size(13)
-                    .color(theme::colors::ON_SURFACE_VARIANT),
+                    .color(c.on_surface_variant),
                 Space::with_height(8),
                 text("Built with pure Rust")
                     .size(12)
                     .font(theme::FONT_MONO)
-                    .color(theme::colors::OUTLINE),
+                    .color(c.outline),
                 text("License: AGPL-3.0")
                     .size(12)
                     .font(theme::FONT_MONO)
-                    .color(theme::colors::OUTLINE),
+                    .color(c.outline),
             ]
             .spacing(4)
         )
@@ -40,12 +42,12 @@ impl GoshApp {
                     .size(14)
                     .font(theme::FONT_HEADLINE),
                 Space::with_height(12),
-                tech_item("GUI Framework", "iced 0.13"),
-                tech_item("Language", "Rust"),
-                tech_item("HTTP Client", "reqwest"),
-                tech_item("Git Operations", "git2 (libgit2)"),
-                tech_item("Archive", "zip"),
-                tech_item("Async Runtime", "tokio"),
+                tech_item("GUI Framework", "iced 0.13", c),
+                tech_item("Language", "Rust", c),
+                tech_item("HTTP Client", "reqwest", c),
+                tech_item("Git Operations", "git2 (libgit2)", c),
+                tech_item("Archive", "zip", c),
+                tech_item("Async Runtime", "tokio", c),
             ]
             .spacing(6)
         )
@@ -94,16 +96,16 @@ impl GoshApp {
     }
 }
 
-fn tech_item<'a>(label: &'a str, value: &'a str) -> Element<'a, Message> {
+fn tech_item<'a>(label: &'a str, value: &'a str, c: theme::Scheme) -> Element<'a, Message> {
     row![
         text(label)
             .size(12)
-            .color(theme::colors::ON_SURFACE_VARIANT)
+            .color(c.on_surface_variant)
             .width(Length::FillPortion(1)),
         text(value)
             .size(12)
             .font(theme::FONT_MONO)
-            .color(theme::colors::PRIMARY)
+            .color(c.primary)
             .width(Length::FillPortion(2)),
     ]
     .align_y(Alignment::Center)

@@ -6,13 +6,15 @@ use iced::{Alignment, Element, Length};
 
 impl GoshApp {
     pub fn view_settings(&self) -> Element<'_, Message> {
+        let c = self.c();
+
         let header = column![
             text("Settings")
                 .size(28)
                 .font(theme::FONT_HEADLINE),
             text("Manage your app preferences and account.")
                 .size(13)
-                .color(theme::colors::ON_SURFACE_VARIANT),
+                .color(c.on_surface_variant),
         ]
         .spacing(8);
 
@@ -78,7 +80,7 @@ impl GoshApp {
                     })
                     .size(12)
                     .font(theme::FONT_MONO)
-                    .color(theme::colors::ON_SURFACE_VARIANT),
+                    .color(c.on_surface_variant),
                     Space::with_width(Length::Fill),
                     button(
                         text("Browse")
@@ -109,7 +111,7 @@ impl GoshApp {
                                     .size(13),
                                 text("Connected via Personal Access Token or OAuth")
                                     .size(11)
-                                    .color(theme::colors::ON_SURFACE_VARIANT),
+                                    .color(c.on_surface_variant),
                             ]
                             .spacing(4),
                             Space::with_width(Length::Fill),
@@ -128,7 +130,7 @@ impl GoshApp {
                     Element::from(
                         text("Not signed in")
                             .size(13)
-                            .color(theme::colors::ON_SURFACE_VARIANT)
+                            .color(c.on_surface_variant)
                     )
                 },
             ]
@@ -167,7 +169,7 @@ impl GoshApp {
                             .font(theme::FONT_HEADLINE),
                         text("Are you sure you want to disconnect? Your token will be removed.")
                             .size(13)
-                            .color(theme::colors::ON_SURFACE_VARIANT),
+                            .color(c.on_surface_variant),
                         Space::with_height(16),
                         row![
                             button(

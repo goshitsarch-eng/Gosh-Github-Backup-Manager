@@ -5,6 +5,7 @@ use iced::{Alignment, Element, Length};
 
 impl GoshApp {
     pub fn view_dashboard(&self) -> Element<'_, Message> {
+        let c = self.c();
         let total_repos = self.repos.len() as u32;
         let total_stars: u32 = self.repos.iter().map(|r| r.stargazers_count).sum();
         let total_forks: u32 = self.repos.iter().map(|r| r.forks_count).sum();
@@ -45,7 +46,7 @@ impl GoshApp {
                         text("STATUS: OPTIMAL")
                             .size(10)
                             .font(theme::FONT_MONO)
-                            .color(theme::colors::PRIMARY)
+                            .color(c.primary)
                     )
                     .padding([4, 10])
                     .style(theme::status_badge),
@@ -55,31 +56,31 @@ impl GoshApp {
                         .font(theme::FONT_HEADLINE),
                     text(subtitle)
                         .size(13)
-                        .color(theme::colors::ON_SURFACE_VARIANT),
+                        .color(c.on_surface_variant),
                     Space::with_height(24),
                     row![
                         column![
                             text("LAST RUN")
                                 .size(10)
                                 .font(theme::FONT_MONO)
-                                .color(theme::colors::ON_SURFACE_VARIANT),
+                                .color(c.on_surface_variant),
                             text(last_backup_str.clone())
                                 .size(13)
                                 .font(theme::FONT_MONO)
-                                .color(theme::colors::PRIMARY),
+                                .color(c.primary),
                         ]
                         .spacing(4),
                         container(Space::new(1, 32))
-                            .style(theme::accent_bar(theme::colors::WHITE_5)),
+                            .style(theme::accent_bar(c.border_subtle)),
                         column![
                             text("INTEGRITY")
                                 .size(10)
                                 .font(theme::FONT_MONO)
-                                .color(theme::colors::ON_SURFACE_VARIANT),
+                                .color(c.on_surface_variant),
                             text("Verified 100%")
                                 .size(13)
                                 .font(theme::FONT_MONO)
-                                .color(theme::colors::SECONDARY),
+                                .color(c.secondary),
                         ]
                         .spacing(4),
                     ]
@@ -100,7 +101,7 @@ impl GoshApp {
                 column![
                     row![
                         container(
-                            text(initials).size(20).color(theme::colors::ON_SURFACE)
+                            text(initials).size(20).color(c.on_surface)
                         )
                         .width(48)
                         .height(48)
@@ -114,15 +115,15 @@ impl GoshApp {
                             text(github_url)
                                 .size(11)
                                 .font(theme::FONT_MONO)
-                                .color(theme::colors::ON_SURFACE_VARIANT),
+                                .color(c.on_surface_variant),
                         ]
                         .spacing(4),
                     ]
                     .spacing(16)
                     .align_y(Alignment::Center),
                     Space::with_height(24),
-                    stat_line("Total Repositories", total_repos_str),
-                    stat_line("Total Stars", total_stars_str.clone()),
+                    stat_line("Total Repositories", total_repos_str, c),
+                    stat_line("Total Stars", total_stars_str.clone(), c),
                 ]
                 .spacing(12)
             )
@@ -135,9 +136,9 @@ impl GoshApp {
 
         // ---- Metrics Row ----
         let metrics_row = row![
-            metric_card("\u{2605}", "Stars Received", total_stars_str, theme::colors::TERTIARY),
-            metric_card("\u{2442}", "Forks Created", total_forks_str, theme::colors::SECONDARY),
-            metric_card("\u{23F0}", "Last Backup", last_backup_str, theme::colors::PRIMARY),
+            metric_card("\u{2605}", "Stars Received", total_stars_str, c.tertiary, c),
+            metric_card("\u{2442}", "Forks Created", total_forks_str, c.secondary, c),
+            metric_card("\u{23F0}", "Last Backup", last_backup_str, c.primary, c),
         ]
         .spacing(16);
 
@@ -148,11 +149,11 @@ impl GoshApp {
                     text("RECENT BACKUPS")
                         .size(12)
                         .font(theme::FONT_HEADLINE)
-                        .color(theme::colors::ON_SURFACE),
+                        .color(c.on_surface),
                     Space::with_width(Length::Fill),
                     text("View All Operations")
                         .size(11)
-                        .color(theme::colors::PRIMARY),
+                        .color(c.primary),
                 ]
                 .align_y(Alignment::Center)
             )
@@ -161,10 +162,10 @@ impl GoshApp {
 
             let table_head = container(
                 row![
-                    text("REPOSITORY").size(10).font(theme::FONT_MONO).color(theme::colors::ON_SURFACE_VARIANT).width(Length::FillPortion(3)),
-                    text("OPERATION ID").size(10).font(theme::FONT_MONO).color(theme::colors::ON_SURFACE_VARIANT).width(Length::FillPortion(2)),
-                    text("DATE").size(10).font(theme::FONT_MONO).color(theme::colors::ON_SURFACE_VARIANT).width(Length::FillPortion(2)),
-                    text("STATUS").size(10).font(theme::FONT_MONO).color(theme::colors::ON_SURFACE_VARIANT).width(Length::FillPortion(1)),
+                    text("REPOSITORY").size(10).font(theme::FONT_MONO).color(c.on_surface_variant).width(Length::FillPortion(3)),
+                    text("OPERATION ID").size(10).font(theme::FONT_MONO).color(c.on_surface_variant).width(Length::FillPortion(2)),
+                    text("DATE").size(10).font(theme::FONT_MONO).color(c.on_surface_variant).width(Length::FillPortion(2)),
+                    text("STATUS").size(10).font(theme::FONT_MONO).color(c.on_surface_variant).width(Length::FillPortion(1)),
                 ]
                 .padding([0, 24])
             )
@@ -176,9 +177,9 @@ impl GoshApp {
             for entry in self.backup_history.iter().take(5) {
                 let date_display = entry.date.split('T').next().unwrap_or(&entry.date).to_string();
                 let status_color = match entry.status.as_str() {
-                    "complete" => theme::colors::PRIMARY,
-                    "partial" => theme::colors::SECONDARY,
-                    _ => theme::colors::ERROR,
+                    "complete" => c.primary,
+                    "partial" => c.secondary,
+                    _ => c.error,
                 };
                 let short_id = if entry.id.len() > 10 {
                     format!("bk_{}", &entry.id[entry.id.len()-6..])
@@ -194,11 +195,11 @@ impl GoshApp {
                         text(short_id)
                             .size(11)
                             .font(theme::FONT_MONO)
-                            .color(theme::colors::ON_SURFACE_VARIANT)
+                            .color(c.on_surface_variant)
                             .width(Length::FillPortion(2)),
                         text(date_display)
                             .size(11)
-                            .color(theme::colors::ON_SURFACE_VARIANT)
+                            .color(c.on_surface_variant)
                             .width(Length::FillPortion(2)),
                         text("\u{25CF}")
                             .size(10)
@@ -219,7 +220,7 @@ impl GoshApp {
                     container(
                         text("No backup history yet")
                             .size(13)
-                            .color(theme::colors::ON_SURFACE_VARIANT)
+                            .color(c.on_surface_variant)
                     )
                     .padding([24, 24])
                     .width(Length::Fill)
@@ -251,11 +252,11 @@ impl GoshApp {
     }
 }
 
-fn stat_line(label: &str, value: String) -> Element<'_, Message> {
+fn stat_line(label: &str, value: String, c: theme::Scheme) -> Element<'_, Message> {
     row![
         text(label)
             .size(12)
-            .color(theme::colors::ON_SURFACE_VARIANT),
+            .color(c.on_surface_variant),
         Space::with_width(Length::Fill),
         text(value)
             .size(18)
@@ -270,6 +271,7 @@ fn metric_card<'a>(
     label: &'a str,
     value: String,
     accent_color: iced::Color,
+    c: theme::Scheme,
 ) -> Element<'a, Message> {
     container(
         column![
@@ -283,7 +285,7 @@ fn metric_card<'a>(
             text(label)
                 .size(10)
                 .font(theme::FONT_MONO)
-                .color(theme::colors::ON_SURFACE_VARIANT),
+                .color(c.on_surface_variant),
         ]
         .spacing(4)
     )
