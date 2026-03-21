@@ -1092,18 +1092,9 @@ async fn perform_backup(
                 .unwrap_or("backup");
             let date_str = chrono::Utc::now().format("%Y-%m-%d").to_string();
 
-            let parent_dir = std::path::Path::new(&options.destination)
-                .parent()
-                .map(|p| p.to_string_lossy().to_string())
-                .unwrap_or_else(|| options.destination.clone());
-            let folder_name = std::path::Path::new(&options.destination)
-                .file_name()
-                .map(|n| n.to_string_lossy().to_string())
-                .unwrap_or_else(|| "backup".to_string());
-
             let zip_path = format!(
-                "{}/{}-{}-{}.zip",
-                parent_dir, folder_name, username, date_str
+                "{}/{}-backup-{}.zip",
+                options.destination, username, date_str
             );
 
             let compression = options.zip_compression.unwrap_or(6);
@@ -1126,7 +1117,7 @@ async fn perform_backup(
                 }
             });
 
-            let _ = ArchiveService::create_archive(
+            match ArchiveService::create_archive(
                 &options.destination,
                 &zip_path,
                 compression as u32,
@@ -1134,7 +1125,11 @@ async fn perform_backup(
                 archive_tx,
                 Some(archive_cancel),
             )
-            .await;
+            .await
+            {
+                Ok(_) => log::info!("Archive created at: {}", zip_path),
+                Err(e) => log::error!("Failed to create archive: {}", e),
+            }
 
             let _ = forward_handle.await;
         }
