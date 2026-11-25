@@ -26,3 +26,7 @@ packaging/flatpak/bin
 packaging/flatpak/.flatpak-builder
 *.flatpak
 manual.md
+
+# Godot import cache and local export credentials
+desktop/.godot/
+desktop/.godot.export_credentials.cfg

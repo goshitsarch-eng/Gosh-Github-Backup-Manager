@@ -54,8 +54,8 @@ fi
 # Check for required tools
 echo "Checking build dependencies..."
 
-if ! command -v cargo &> /dev/null; then
-    echo "Error: cargo (Rust) is not installed"
+if ! command -v godot &> /dev/null; then
+    echo "Error: Godot 4.7.2 is not installed"
     exit 1
 fi
 
@@ -67,7 +67,7 @@ if [ "$BUILD_BINARY" = true ]; then
     echo "Building release binary..."
     echo ""
 
-    cargo build --release
+    ./scripts/export.sh
 
     echo ""
     echo "Binary:"
@@ -85,9 +85,9 @@ if [ "$BUILD_FLATPAK" = true ]; then
         echo "                 sudo dnf install flatpak-builder (Fedora)"
     else
         # Ensure binary is built
-        if [ ! -f "$PROJECT_ROOT/target/release/gosh-github-backup-manager" ]; then
+        if [ "$BUILD_BINARY" != true ]; then
             echo "Building release binary first..."
-            cargo build --release
+            ./scripts/export.sh
         fi
 
         mkdir -p "$SCRIPT_DIR/flatpak/bin"

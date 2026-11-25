@@ -9,7 +9,6 @@ permissions:
   contents: write
 
 env:
-  CARGO_TERM_COLOR: always
   APP_NAME: gosh-github-backup-manager
 
 jobs:
@@ -22,24 +21,24 @@ jobs:
       matrix:
         include:
           - target: x86_64-pc-windows-msvc
+            godot_arch: x86_64
             arch: x64
           - target: aarch64-pc-windows-msvc
+            godot_arch: arm64
             arch: arm64
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+      - uses: chickensoft-games/setup-godot@v2
         with:
-          targets: ${{ matrix.target }}
+          version: 4.7.2
+          use-dotnet: false
+          include-templates: true
 
-      - uses: swatinem/rust-cache@v2
-        with:
-          key: ${{ matrix.target }}
-
-      - name: Build
-        run: cargo build --release --target ${{ matrix.target }}
+      - name: Export Windows application
+        shell: bash
+        run: ./scripts/export.sh Windows ${{ matrix.godot_arch }} target/${{ matrix.target }}/release/gosh-github-backup-manager.exe
 
       - name: Install NSIS
         run: |
@@ -132,20 +131,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libssl-dev pkg-config build-essential \
-            libfuse2 file desktop-file-utils
+      - name: Install AppImage tools
+        run: sudo apt-get update && sudo apt-get install -y libfuse2 file desktop-file-utils
 
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+      - uses: chickensoft-games/setup-godot@v2
+        with:
+          version: 4.7.2
+          use-dotnet: false
+          include-templates: true
 
-      - uses: swatinem/rust-cache@v2
+      - name: Test migration
+        run: ./tests/migration.sh
 
-      - name: Build
-        run: cargo build --release
+      - name: Export Linux application
+        run: ./scripts/export.sh Linux x86_64
 
       - name: Get version
         id: version
@@ -217,33 +216,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install dependencies and cross-compilation tools
-        run: |
-          sudo dpkg --add-architecture arm64
-          sudo sed -i 's/^deb /deb [arch=amd64] /' /etc/apt/sources.list
-          echo "deb [arch=arm64] http://ports.ubuntu.com/ jammy main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list
-          echo "deb [arch=arm64] http://ports.ubuntu.com/ jammy-updates main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list
-          sudo apt-get update
-          sudo apt-get install -y \
-            gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
-            libssl-dev:arm64 liblzma-dev:arm64 pkg-config \
-            libfuse2 file desktop-file-utils
+      - name: Install AppImage tools
+        run: sudo apt-get update && sudo apt-get install -y libfuse2 file desktop-file-utils
 
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+      - uses: chickensoft-games/setup-godot@v2
         with:
-          targets: aarch64-unknown-linux-gnu
+          version: 4.7.2
+          use-dotnet: false
+          include-templates: true
 
-      - uses: swatinem/rust-cache@v2
-        with:
-          key: aarch64-unknown-linux-gnu
-
-      - name: Build
-        env:
-          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
-          PKG_CONFIG_SYSROOT_DIR: /usr/aarch64-linux-gnu
-          PKG_CONFIG_PATH: /usr/lib/aarch64-linux-gnu/pkgconfig
-        run: cargo build --release --target aarch64-unknown-linux-gnu
+      - name: Export Linux application
+        run: ./scripts/export.sh Linux arm64 target/aarch64-unknown-linux-gnu/release/gosh-github-backup-manager
 
       - name: Get version
         id: version

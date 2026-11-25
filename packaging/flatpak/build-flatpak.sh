@@ -23,7 +23,7 @@ flatpak install --user -y flathub org.gnome.Platform//47 org.gnome.Sdk//47 || tr
 BINARY="$PROJECT_ROOT/target/release/gosh-github-backup-manager"
 if [ ! -f "$BINARY" ]; then
     echo "Error: Release binary not found at $BINARY"
-    echo "Please build the application first with: cargo build --release"
+    echo "Please build the application first with: ./scripts/export.sh"
 
     exit 1
 fi

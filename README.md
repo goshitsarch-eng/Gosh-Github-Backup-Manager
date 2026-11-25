@@ -1,16 +1,18 @@
 # Gosh GitHub Backup Manager
 
-A native desktop app for backing up your GitHub repositories. Built with Rust and the [iced](https://github.com/iced-rs/iced) GUI framework — no Electron, no web runtime, just a fast binary that runs on macOS, Windows, and Linux.
+A native desktop app for backing up your GitHub repositories. Built with Godot 4.7.2 and GDScript for macOS, Windows, and Linux.
 
 Connect with your GitHub account, pick the repos you care about, and back them up locally with a couple of clicks. You can clone everything, mirror repos, archive them as zips, and keep a history of what you've backed up.
 
 ## Screenshots
 
-![Screenshot 1](screenshots/img1.png)
-![Screenshot 2](screenshots/img2.png)
-![Screenshot 3](screenshots/img3.png)
-![Screenshot 4](screenshots/img4.png)
-![Screenshot 5](screenshots/img5.png)
+The following screens use a sample account.
+
+![Connect to GitHub](screenshots/img1.png)
+![Dashboard](screenshots/img2.png)
+![Repository selection](screenshots/img3.png)
+![Backup options](screenshots/img4.png)
+![Settings](screenshots/img5.png)
 
 ## What it does
 
@@ -26,21 +28,25 @@ For a full walkthrough, see the [User Manual](https://docs.goshapps.com/7/gosh-g
 
 ### From source
 
-You'll need Rust (stable) and Git installed.
+The active application and export presets live in `desktop/`. The earlier Rust implementation remains available for migration comparisons.
+
+Install the standard Godot 4.7.2 editor and Git 2.31 or later. The app uses Git on PATH for cloning and updating repositories.
 
 ```bash
 git clone https://github.com/goshitsarch-eng/Gosh-Github-Backup-Manager.git
 cd Gosh-Github-Backup-Manager
-cargo build --release
-./target/release/gosh-github-backup-manager
+godot --path desktop --import
+godot --path desktop
 ```
 
-On macOS you can create an app bundle with the icon:
+For a release build, install the matching Godot 4.7.2 export templates. Run `./scripts/export.sh Linux x86_64` or `./scripts/export.sh Windows arm64` from Bash. Both platforms support `x86_64` and `arm64`. On macOS, build the universal app bundle with:
 
 ```bash
 ./scripts/bundle-macos.sh
 open "target/release/Gosh GitHub Backup Manager.app"
 ```
+
+Run the migration checks with `python -B tests/migration.py` on Linux, macOS, or Windows, or use `./tests/migration.sh` on Linux. The suite uses temporary repositories and an isolated profile.
 
 ### Pre-built binaries
 

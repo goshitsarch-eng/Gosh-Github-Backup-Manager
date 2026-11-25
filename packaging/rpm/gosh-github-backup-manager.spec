@@ -7,17 +7,14 @@ License:        AGPL-3.0
 URL:            https://github.com/Gosh-Its-Arch/Github-Backup-Manager
 Source0:        %{name}-%{version}.tar.gz
 
-BuildRequires:  rust >= 1.70
-BuildRequires:  cargo
-BuildRequires:  openssl-devel
-BuildRequires:  pkg-config
+BuildRequires:  godot = 4.7.2
+BuildRequires:  godot-export-templates = 4.7.2
 
 Requires:       git
-Requires:       openssl-libs
 
 %description
-Gosh Github Backup Manager is a native desktop application built with Rust
-and iced that helps you backup your GitHub repositories to your local machine.
+Gosh Github Backup Manager is a native desktop application built with Godot
+and GDScript that helps you backup your GitHub repositories to your local machine.
 It provides an intuitive interface for managing your repository backups with
 support for multiple backup modes including clone and mirror.
 
@@ -34,7 +31,7 @@ Features:
 %autosetup
 
 %build
-cargo build --release
+./scripts/export.sh
 
 %install
 rm -rf %{buildroot}
